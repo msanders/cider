@@ -67,3 +67,5 @@ User defaults are stored similarly:
 ## Caveats
 
 There doesn't seem to be a way to re-install purchases made from Mac App Store via the command line just yet, so those have to be done by hand.
+
+**Note**: Cider is a work-in-progress, don't use it for anything important yet!

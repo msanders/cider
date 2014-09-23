@@ -300,14 +300,15 @@ def restore(debug=None):
     for cask in bootstrap["casks"]:
         _spawn(["brew", "cask", "install"] + cask.split(" "), debug=debug)
 
-    for script in bootstrap["after-scripts"]:
-        _spawn(script, shell=True, debug=debug)
-
     for domain in defaults:
         options = defaults[domain]
         for key, value in options.iteritems():
             _write_default(domain, key, value)
+
     relink(debug)
+
+    for script in bootstrap["after-scripts"]:
+        _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
 
 
 def install(*formulas, **kwargs):

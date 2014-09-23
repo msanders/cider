@@ -58,6 +58,12 @@ class XcodeMissingError(CiderException):
         self.url = url
 
 
+class BrewMissingError(CiderException):
+    def __init__(self, message, url, exit_code=None):
+        CiderException.__init__(self, message, exit_code)
+        self.url = url
+
+
 class BootstrapMissingError(CiderException):
     def __init__(self, message, path, exit_code=None):
         CiderException.__init__(self, message, exit_code)
@@ -286,6 +292,12 @@ def restore(debug=None):
         raise XcodeMissingError(
             "Xcode not installed",
             "https://itunes.apple.com/us/app/xcode/id497799835?mt=12"
+        )
+    elif _spawn(["which", "brew"], check_call=False, debug=debug,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE):
+        raise BrewMissingError(
+            "Homebrew not installed",
+            "http://brew.sh/#install"
         )
 
     bootstrap = _read_bootstrap()

@@ -254,6 +254,11 @@ def main():
         click.getchar()
         urlopen(e.url)
         sys.exit(1)
+    except cider.BrewMissingError as e:
+        print("Next, install Homebrew (press any key to redirect)")
+        click.getchar()
+        urlopen(e.url)
+        sys.exit(1)
     except (cider.CiderException, click.ClickException) as e:
         tty.puterr(e.message, prefix="Error:")
         sys.exit(e.exit_code)

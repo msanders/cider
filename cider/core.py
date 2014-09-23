@@ -276,7 +276,7 @@ def restore(debug=None):
         debug = False
     macos_version = platform.mac_ver()[0]
 
-    if int(macos_version.split(".")[1]) < 10:
+    if int(macos_version.split(".")[1]) < 9:
         raise UnsupportedOSError(
             "Unsupported OS version; please upgrade to 10.9 or later " +
             "and try again.",

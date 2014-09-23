@@ -291,6 +291,9 @@ def restore(debug=None):
     bootstrap = _read_bootstrap()
     defaults = _read_json(DEFAULTS_FILE, {})
 
+    for script in bootstrap["before-scripts"]:
+        _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
+
     for tap in bootstrap["taps"]:
         _spawn(["brew", "tap"] + [tap], debug=debug)
 

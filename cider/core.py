@@ -130,7 +130,12 @@ def _modify_json(path, transform):
 
         if changed:
             f.seek(0)
-            f.write(json.dumps(contents, indent=4, sort_keys=True))
+            f.write(json.dumps(
+                contents,
+                indent=4,
+                sort_keys=True,
+                separators=(',', ': ')
+            ))
             f.truncate()
 
         return changed
@@ -138,7 +143,12 @@ def _modify_json(path, transform):
 
 def _write_json(path, contents):
     with open(path, "w") as f:
-        f.write(json.dumps(contents, indent=4, sort_keys=True))
+        f.write(json.dumps(
+            contents,
+            indent=4,
+            sort_keys=True,
+            separators=(',', ': ')
+        ))
 
 
 def _read_bootstrap():

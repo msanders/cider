@@ -194,7 +194,6 @@ def _write_default(domain, key, value, force=None, debug=None):
     if debug is None:
         debug = False
 
-    json_type = type(value)
     key_types = {
         "-bool": bool,
         "-float": float,
@@ -202,7 +201,7 @@ def _write_default(domain, key, value, force=None, debug=None):
     }
 
     key_type = next(
-        (k for k, t in key_types.iteritems() if isinstance(json_type, t)),
+        (k for k, t in key_types.iteritems() if isinstance(value, t)),
         "-string"
     )
 

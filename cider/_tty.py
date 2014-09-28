@@ -77,10 +77,6 @@ def putdebug(msg, debug=None, prefix=None):
         sys.stdout.write(_debug(msg, prefix=prefix) + "\n")
 
 
-def getc():
-    return sys.stdin.read(1)
-
-
 def color(msg, num):
     return __escape(msg, "0;{0}".format(num))
 

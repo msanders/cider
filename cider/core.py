@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
 from shutil import copy2 as cp
+from subprocess import CalledProcessError
 from tempfile import mkdtemp
 import _tty as tty
 import click
@@ -92,6 +93,22 @@ def _spawn(args, **kwargs):
         return subprocess.check_call(args, **params)
     else:
         return subprocess.call(args, **params)
+
+
+def _safe_install(formula, debug=None, cask=None):
+    if cask is None:
+        cask = False
+    try:
+        args = ["brew"] + (["cask"] if cask else [])
+        args += ["install"] + formula.split(" ")
+        args += (["-d"] if debug else [])
+        _spawn(args, debug=debug)
+    except CalledProcessError as e:
+        sys.stdout.write(
+            "Failed to install {0}. Continue? [y/N] ".format(formula)
+        )
+        if sys.stdin.read(1).lower() != "y":
+            raise
 
 
 def _mkdir_p(pathname):
@@ -309,10 +326,10 @@ def restore(debug=None):
         _spawn(["brew", "tap"] + [tap], debug=debug)
 
     for formula in bootstrap["formulas"]:
-        _spawn(["brew", "install"] + formula.split(" "), debug=debug)
+        _safe_install(formula, debug=debug)
 
-    for cask in bootstrap["casks"]:
-        _spawn(["brew", "cask", "install"] + cask.split(" "), debug=debug)
+    for cask in bootstrap.get("casks", []):
+        _safe_install(cask, debug=debug, cask=True)
 
     for domain in defaults:
         options = defaults[domain]

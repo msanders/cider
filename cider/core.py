@@ -317,7 +317,6 @@ def restore(debug=None):
         )
 
     bootstrap = _read_bootstrap()
-    defaults = _read_json(DEFAULTS_FILE, {})
 
     for script in bootstrap.get("before-scripts", []):
         _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
@@ -331,11 +330,7 @@ def restore(debug=None):
     for cask in bootstrap.get("casks", []):
         _safe_install(cask, debug=debug, cask=True)
 
-    for domain in defaults:
-        options = defaults[domain]
-        for key, value in options.iteritems():
-            _write_default(domain, key, value)
-
+    apply_defaults(debug)
     relink(debug)
 
     for script in bootstrap.get("after-scripts", []):
@@ -541,3 +536,13 @@ def remove_default(domain, key, debug=None):
 
     if _modify_defaults(domain, transform):
         tty.puts("Updated defaults")
+
+
+def apply_defaults(debug=None):
+    defaults = _read_json(DEFAULTS_FILE, {})
+    for domain in defaults:
+        options = defaults[domain]
+        for key, value in options.iteritems():
+            _write_default(domain, key, value)
+
+    tty.puts("Applied defaults")

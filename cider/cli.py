@@ -22,7 +22,7 @@ class CLI(click.Group):
             "{0} [cask] missing",
             "{0} set-default [-g] NAME KEY VALUE",
             "{0} remove-default [-g] NAME KEY",
-            "{0} fetch [USER/REPO]",
+            "{0} apply-defaults",
             "{0} restore",
             "{0} relink"
         ]
@@ -234,6 +234,12 @@ def remove_default(name, key, globaldomain=None, debug=None):
     if globaldomain:
         name, key = "NSGlobalDomain", name
     cider.remove_default(name, key, debug=debug)
+
+
+@cli.command("apply-defaults")
+@click.option("-d", "--debug", is_flag=True)
+def apply_defaults(debug=None):
+    cider.apply_defaults(debug=debug)
 
 
 def main():

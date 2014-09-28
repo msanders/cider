@@ -254,10 +254,10 @@ def _make_symlink(source, target, debug=None):
                 os.path.realpath(source)
             ):
                 linked = True
-                print(tty.progress("Already linked: {0} -> {1}".format(
+                tty.putdebug("Already linked: {0} -> {1}".format(
                     tty.color(_collapseuser(target), tty.MAGENTA),
                     _collapseuser(source)
-                )))
+                ), debug)
             else:
                 fmt = "Linked to wrong target: {0} -> {1} (instead of {2})"
                 tty.putdebug(fmt.format(

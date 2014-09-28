@@ -317,6 +317,9 @@ def restore(debug=None):
         )
 
     bootstrap = _read_bootstrap()
+    casks = bootstrap.get("casks", [])
+    formulas = bootstrap.get("formulas", [])
+    dependencies = bootstrap.get("dependencies", {})
 
     for script in bootstrap.get("before-scripts", []):
         _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
@@ -324,10 +327,22 @@ def restore(debug=None):
     for tap in bootstrap.get("taps", []):
         _spawn(["brew", "tap"] + [tap], debug=debug)
 
-    for formula in bootstrap.get("formulas", []):
+    for formula in formulas:
+        if formula in dependencies:
+            deps = dependencies[formula]
+            deps = deps if isinstance(deps, list) else [deps]
+            deps = (
+                # Currently only cask dependencies are supported.
+                dep.split("/")[1] for dep in deps if dep.startswith("cask/")
+            )
+
+            for cask in deps:
+                _safe_install(cask, debug=debug, cask=True)
+                del casks[casks.index(cask)]
+
         _safe_install(formula, debug=debug)
 
-    for cask in bootstrap.get("casks", []):
+    for cask in casks:
         _safe_install(cask, debug=debug, cask=True)
 
     apply_defaults(debug)

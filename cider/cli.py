@@ -23,6 +23,10 @@ class CLI(click.Group):
             "{0} set-default [-g] NAME KEY VALUE",
             "{0} remove-default [-g] NAME KEY",
             "{0} apply-defaults",
+            "{0} set-icon APP ICON",
+            "{0} remove-icon APP",
+            "{0} apply-icons",
+            "{0} run-scripts",
             "{0} restore",
             "{0} relink"
         ]
@@ -240,6 +244,33 @@ def remove_default(name, key, globaldomain=None, debug=None):
 @click.option("-d", "--debug", is_flag=True)
 def apply_defaults(debug=None):
     cider.apply_defaults(debug=debug)
+
+
+@cli.command("set-icon")
+@click.option("-d", "--debug", is_flag=True)
+@click.argument("app")
+@click.argument("icon")
+def set_icon(app, icon, debug=None):
+    cider.set_icon(app, icon, debug=debug)
+
+
+@cli.command("remove-icon")
+@click.option("-d", "--debug", is_flag=True)
+@click.argument("app")
+def remove_icon(app, debug=None):
+    cider.remove_icon(app, debug=debug)
+
+
+@cli.command("apply-icons")
+@click.option("-d", "--debug", is_flag=True)
+def apply_defaults(debug=None):
+    cider.apply_icons(debug=debug)
+
+
+@cli.command("run-scripts")
+@click.option("-d", "--debug", is_flag=True)
+def run_scripts(debug=None):
+    cider.run_scripts(debug=debug)
 
 
 def main():

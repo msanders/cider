@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
+from rfc3987 import parse as urlparse
 from shutil import copy2 as cp
 from subprocess import CalledProcessError
 from tempfile import mkdtemp
+import _osx as osx
 import _tty as tty
 import click
 import copy
@@ -76,6 +78,11 @@ class SymlinkError(CiderException):
         CiderException.__init__(self, message, exit_code)
 
 
+def AppMissingError(CiderException):
+    def __init__(self, message, exit_code=None):
+        CiderException.__init__(self, message, exit_code)
+
+
 def _spawn(args, **kwargs):
     check_call = kwargs.get("check_call", True)
     check_output = kwargs.get("check_output", False)
@@ -95,6 +102,10 @@ def _spawn(args, **kwargs):
         return subprocess.call(args, **params)
 
 
+def _curl(url, path):
+    return _spawn(["curl", url, "-o", path, "--progress-bar"])
+
+
 def _safe_install(formula, debug=None, cask=None):
     if cask is None:
         cask = False
@@ -109,6 +120,14 @@ def _safe_install(formula, debug=None, cask=None):
         )
         if sys.stdin.read(1).lower() != "y":
             raise
+
+
+def _is_url(url):
+    try:
+        rfc3987.parse(url, rule="IRI")
+    except ValueError:
+        return False
+    return True
 
 
 def _mkdir_p(pathname):
@@ -293,6 +312,23 @@ def _collapseuser(path):
     return path
 
 
+def _apply_icon(app, icon, debug=None):
+    app_path = osx.path_for_app(app)
+    if not app_path:
+        raise AppMissingError("Application not found: '{0}'".format(app))
+
+    try:
+        components = urlparse(icon)
+        tmpdir = mkdtemp()
+        icon_path = os.path.join(tmpdir, os.path.basename(components["path"]))
+        print(tty.progress("Downloading {0} icon: {1}".format(app, icon)))
+        _curl(icon, icon_path)
+    except ValueError:
+        icon_path = icon
+
+    osx.set_icon(app_path, icon_path)
+
+
 def restore(debug=None):
     if debug is None:
         debug = False
@@ -345,8 +381,9 @@ def restore(debug=None):
     for cask in casks:
         _safe_install(cask, debug=debug, cask=True)
 
-    apply_defaults(debug)
     relink(debug)
+    apply_defaults(debug)
+    apply_icons(debug)
 
     for script in bootstrap.get("after-scripts", []):
         _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
@@ -561,3 +598,44 @@ def apply_defaults(debug=None):
             _write_default(domain, key, value)
 
     tty.puts("Applied defaults")
+
+
+def run_scripts(debug=None):
+    bootstrap = _read_bootstrap()
+    scripts = bootstrap.get("before-scripts", []) + \
+              bootstrap.get("after-scripts", [])
+    for script in scripts:
+        _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
+
+
+def set_icon(app, icon, debug=None):
+    def transform(bootstrap):
+        icons = bootstrap.get("icons", {})
+        icons[app] = icon
+        return bootstrap
+
+    _modify_json(BOOTSTRAP_FILE, transform)
+    _apply_icon(app, icon, debug=debug)
+
+
+def remove_icon(app, debug=None):
+    def transform(bootstrap):
+        icons = bootstrap.get("icons", {})
+        del icons[app]
+        return bootstrap
+
+    app_path = osx.path_for_app(app)
+    if not app_path:
+        raise AppMissingError("Application not found: '{0}'".format(app))
+
+    _modify_json(BOOTSTRAP_FILE, transform)
+    osx.remove_icon(app_path)
+
+
+def apply_icons(debug=None):
+    bootstrap = _read_json(BOOTSTRAP_FILE)
+    icons = bootstrap.get("icons", {})
+    for app, icon in icons.iteritems():
+        _apply_icon(app, icon, debug)
+
+    tty.puts("Applied icons")

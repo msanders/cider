@@ -122,14 +122,6 @@ def _safe_install(formula, debug=None, cask=None):
             raise
 
 
-def _is_url(url):
-    try:
-        rfc3987.parse(url, rule="IRI")
-    except ValueError:
-        return False
-    return True
-
-
 def _mkdir_p(pathname):
     try:
         os.makedirs(pathname)
@@ -614,7 +606,7 @@ def apply_defaults(debug=None):
 def run_scripts(debug=None):
     bootstrap = _read_bootstrap()
     scripts = bootstrap.get("before-scripts", []) + \
-              bootstrap.get("after-scripts", [])
+       bootstrap.get("after-scripts", [])
     for script in scripts:
         _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
 

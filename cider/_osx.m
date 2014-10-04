@@ -25,6 +25,19 @@ static PyObject *setIcon(NSString *filePath, NSString *iconPath)
     Py_RETURN_NONE;
 }
 
+static void setPyErrorFromNSError(NSError *error) {
+    NSArray *keys = @[NSLocalizedDescriptionKey, NSLocalizedFailureReasonErrorKey];
+    NSMutableArray *errors = [NSMutableArray arrayWithCapacity:keys.count];
+    for (NSString *key in keys) {
+        NSString *value = error.userInfo[key];
+        if (value) {
+            [errors addObject:value];
+        }
+    }
+
+    PyErr_SetString(PyExc_OSError, [[errors componentsJoinedByString:@" "] UTF8String]);
+}
+
 static PyObject *py_pathForApp(PyObject *self, PyObject *args)
 {
     const char *appNameBuf;
@@ -71,10 +84,32 @@ static PyObject *py_removeIcon(PyObject *self, PyObject *args)
     }
 }
 
+static PyObject *py_moveToTrash(PyObject *self, PyObject *args)
+{
+    const char *filePathBuf;
+    if (!PyArg_ParseTuple(args, "s", &filePathBuf)) {
+        return NULL;
+    }
+
+    @autoreleasepool {
+        NSString *filePath = [NSString stringWithUTF8String:filePathBuf];
+        NSURL *fileURL = [NSURL fileURLWithPath:filePath];
+        NSURL *outURL = nil;
+        NSError *error = nil;
+        if (![[NSFileManager defaultManager] trashItemAtURL:fileURL resultingItemURL:&outURL error:&error]) {
+            setPyErrorFromNSError(error);
+            return NULL;
+        }
+
+        return PyUnicode_FromString([outURL.path UTF8String]);
+    }
+}
+
 static PyMethodDef osx_methods[] = {
     {"path_for_app", py_pathForApp, METH_VARARGS},
     {"set_icon", py_setIcon, METH_VARARGS},
     {"remove_icon", py_removeIcon, METH_VARARGS},
+    {"move_to_trash", py_moveToTrash, METH_VARARGS},
     {NULL, NULL}
 };
 

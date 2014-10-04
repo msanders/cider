@@ -246,7 +246,7 @@ def _write_default(domain, key, value, force=None, debug=None):
     _spawn(args, debug=debug)
 
 
-def _make_symlink(source, target, debug=None):
+def _make_symlink(source, target, debug=None, force=None):
     linked = False
 
     if not os.path.exists(source):
@@ -279,16 +279,25 @@ def _make_symlink(source, target, debug=None):
                 ), debug)
             else:
                 fmt = "Linked to wrong target: {0} -> {1} (instead of {2})"
-                tty.putdebug(fmt.format(
+                tty.puterr(fmt.format(
                     tty.color(target, tty.MAGENTA),
                     os.path.realpath(_collapseuser(target)),
                     os.path.realpath(_collapseuser(source))
-                ), debug)
+                ), warning=force)
         else:
             tty.puterr("{0} symlink target already exists at: {1}".format(
                 _collapseuser(source),
                 _collapseuser(target)
-            ))
+            ), warning=force)
+
+    if not linked and force:
+        try:
+            osx.move_to_trash(target)
+            print(tty.progress("Moved {0} to trash").format(target))
+        except OSError as e:
+            tty.puterr("Error moving {0} to trash: {1}".format(target, str(e)))
+            return False
+        return _make_symlink(source, target, debug, force)
 
     return linked
 
@@ -478,9 +487,11 @@ def untap(tap, verbose=None, debug=None):
         tty.puterr("{0} tap not found in bootstrapped".format(tap))
 
 
-def relink(debug=None):
+def relink(debug=None, force=None):
     if debug is None:
         debug = False
+    if force is None:
+        force = False
 
     symlinks = _read_bootstrap().get("symlinks", {})
     previous_targets = _read_json(SYMLINK_TARGETS_FILE, [])
@@ -497,7 +508,7 @@ def relink(debug=None):
                     os.path.basename(source)
                 )
 
-            _make_symlink(source, source_target, debug=debug)
+            _make_symlink(source, source_target, debug, force)
             new_targets.append(source_target)
 
     _remove_dead_targets(set(previous_targets) - set(new_targets), debug)

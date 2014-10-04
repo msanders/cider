@@ -153,8 +153,9 @@ def unlink(source, target, debug=None):
 
 @cli.command()
 @click.option("-d", "--debug", is_flag=True)
-def relink(debug=None):
-    cider.relink(debug=debug)
+@click.option("-f", "--force", is_flag=True)
+def relink(debug=None, force=None):
+    cider.relink(debug=debug, force=force)
 
 
 @cli.command()

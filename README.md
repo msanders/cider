@@ -11,6 +11,13 @@ Simply run the following on a new machine:
 ... and you’ll be back up and running, with all of your applications and command line utilities re-installed (and config files restored).
 
 
+## Installation
+
+Cider is available directly from [PyPI](https://pypi.python.org/pypi/cider):
+
+    pip install cider
+
+
 ## Configuration
 
 All configuration files are stored in the `~/.cider` directory as JSON. E.g., here's an example bootstrap file:

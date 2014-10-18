@@ -16,7 +16,8 @@ ext = Extension(
 setup(
     name='cider',
     author='Michael Sanders',
-    version='0.1',
+    author_email='michael [at] msanders [dot] com',
+    version='1.0',
     url='https://github.com/msanders/cider',
     packages=find_packages(),
     include_package_data=True,

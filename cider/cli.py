@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals
 from subprocess import CalledProcessError
 from webbrowser import open as urlopen
 import _tty as tty
@@ -37,8 +38,9 @@ class CLI(click.Group):
 
     def get_command(self, ctx, cmd_name):
         aliases = {
-            "write": "set-default",
-            "delete": "remove-default"
+            "delete": "remove-default",
+            "ls": "list",
+            "write": "set-default"
         }
 
         cmd_name = aliases.get(cmd_name, cmd_name)
@@ -65,14 +67,19 @@ def cask(ctx, command, arg, force=None, verbose=None, debug=None):
         "list": cask_list
     }
 
+    aliases = {
+        "ls": "list",
+    }
+
     args_by_cmd = {
         "install": ["formula", "force", "verbose", "debug"],
         "rm": ["formula", "verbose", "debug"],
         "missing": ["debug"],
-        "list": ["debug"]
+        "list": []
     }
 
-    args = args_by_cmd.get(command, [])
+    cmd = aliases.get(command, command)
+    args = args_by_cmd.get(cmd, [])
     kwargs = {
         "formula": arg,
         "force": force,
@@ -81,9 +88,11 @@ def cask(ctx, command, arg, force=None, verbose=None, debug=None):
     }
     kwargs = {k: v for k, v in kwargs.iteritems() if k in args}
 
-    func = func_by_cmd[command]
+    func = func_by_cmd.get(cmd)
     if func:
         ctx.invoke(func, **kwargs)
+    else:
+        raise click.ClickException("No such command \"{0}\"".format(cmd))
 
 
 @cli.command()
@@ -98,7 +107,7 @@ def restore(debug=None):
 @click.option("-v", "--verbose", is_flag=True)
 @click.argument("formula", nargs=-1, required=True)
 def install(formula, force=None, verbose=None, debug=None):
-    cider.install(*formula, force=force, debug=debug, verbose=verbose)
+    cider.install(force=force, debug=debug, verbose=verbose, *formula)
 
 
 @cli.command()
@@ -214,8 +223,9 @@ def remove_default(name, key, globaldomain=None, debug=None):
 
 
 @cli.command("apply-defaults")
-def apply_defaults():
-    cider.apply_defaults()
+@click.option("-d", "--debug", is_flag=True)
+def apply_defaults(debug=None):
+    cider.apply_defaults(debug)
 
 
 @cli.command("set-icon")

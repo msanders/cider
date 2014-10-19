@@ -10,13 +10,13 @@ BLUE = 34
 MAGENTA = 35
 WHITE = 39
 
-_prefix_re = re.compile(r"[.:!?>]$")
+_PREFIX_RE = re.compile(r"[.:!?>]$")
 
 
 def error(msg, prefix=None):
     if prefix is None:
         prefix = "Whoops!"
-    delimeter = "" if _prefix_re.search(prefix) else ":"
+    delimeter = "" if _PREFIX_RE.search(prefix) else ":"
     return "{0}{1} {2}".format(
         underline(prefix, RED),
         delimeter,
@@ -27,7 +27,7 @@ def error(msg, prefix=None):
 def success(msg, prefix=None):
     if prefix is None:
         prefix = "Success!"
-    delimeter = "" if _prefix_re.search(prefix) else ":"
+    delimeter = "" if _PREFIX_RE.search(prefix) else ":"
     return "{0}{1} {2}".format(
         underline(prefix, GREEN),
         delimeter,
@@ -38,7 +38,7 @@ def success(msg, prefix=None):
 def progress(msg, prefix=None):
     if prefix is None:
         prefix = "==>"
-    delimeter = "" if _prefix_re.search(prefix) else ":"
+    delimeter = "" if _PREFIX_RE.search(prefix) else ":"
     return "{0}{1} {2}".format(
         bold(prefix, BLUE),
         delimeter,
@@ -49,7 +49,7 @@ def progress(msg, prefix=None):
 def debug(msg, prefix=None):
     if prefix is None:
         prefix = "==>"
-    delimeter = "" if _prefix_re.search(prefix) else ":"
+    delimeter = "" if _PREFIX_RE.search(prefix) else ":"
     return "{0}{1} {2}".format(
         bold(prefix, YELLOW),
         delimeter,
@@ -69,26 +69,26 @@ def puts(msg, prefix=None):
     sys.stdout.write(success(msg, prefix=prefix) + "\n")
 
 
-_debug = debug
 def putdebug(msg, debug=None, prefix=None):
     if debug is None:
         debug = False
     if debug:
-        sys.stdout.write(_debug(msg, prefix=prefix) + "\n")
+        debug_func = putdebug.__globals__["debug"]
+        sys.stdout.write(debug_func(msg, prefix=prefix) + "\n")
 
 
 def color(msg, num):
-    return __escape(msg, "0;{0}".format(num))
+    return _escape(msg, "0;{0}".format(num))
 
 
 def underline(msg, num):
-    return __escape(msg, "4;{0}".format(num))
+    return _escape(msg, "4;{0}".format(num))
 
 
 def bold(msg, num):
-    return __escape(msg, "1;{0}".format(num))
+    return _escape(msg, "1;{0}".format(num))
 
 
-def __escape(msg, seq):
+def _escape(msg, seq):
     fmt = "\033[{0}m"
     return fmt.format(seq) + msg + fmt.format(CLEAR)

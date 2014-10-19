@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
 from rfc3987 import parse as urlparse
-from shutil import copy2 as cp
 from subprocess import CalledProcessError
 from tempfile import mkdtemp
 import _osx as osx
 import _tty as tty
-import click
 import copy
 import errno
 import glob
+import json
 import os
 import platform
 import pwd
@@ -17,12 +16,7 @@ import re
 import subprocess
 import sys
 
-try:
-    import simplejson as json
-    import simplejson.scanner.JSONDecodeError
-except ImportError:
-    import json
-    JSONDecodeError = ValueError
+JSONDecodeError = ValueError
 
 CIDER_DIR = os.path.join(os.path.expanduser("~"), ".cider")
 SYMLINK_DIR = os.path.join(CIDER_DIR, "symlinks")
@@ -31,8 +25,8 @@ DEFAULTS_FILE = os.path.join(CIDER_DIR, "defaults.json")
 CACHE_DIR = os.path.join(CIDER_DIR, ".cache")
 SYMLINK_TARGETS_FILE = os.path.join(CACHE_DIR, "symlink_targets.json")
 
-_defaults_true_re = re.compile(r"\bY(ES)?\b", re.I)
-_defaults_false_re = re.compile(r"\bN(O)?\b", re.I)
+_DEFAULTS_TRUE_RE = re.compile(r"\bY(ES)?\b", re.I)
+_DEFAULTS_FALSE_RE = re.compile(r"\bN(O)?\b", re.I)
 
 
 class CiderException(Exception):
@@ -74,13 +68,11 @@ class BootstrapMissingError(CiderException):
 
 
 class SymlinkError(CiderException):
-    def __init__(self, message, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
+    pass
 
 
-def AppMissingError(CiderException):
-    def __init__(self, message, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
+class AppMissingError(CiderException):
+    pass
 
 
 def _spawn(args, **kwargs):
@@ -119,7 +111,7 @@ def _safe_install(formula, debug=None, cask=None):
             "Failed to install {0}. Continue? [y/N] ".format(formula)
         )
         if sys.stdin.read(1).lower() != "y":
-            raise
+            raise e
 
 
 def _mkdir_p(pathname):
@@ -138,17 +130,15 @@ def _touch(fname, times=None):
 def _read_json(path, fallback=None):
     try:
         with open(path, "r") as f:
-            try:
-                contents = json.loads(f.read())
-            except JSONDecodeError as e:
-                raise JSONError(e, path)
-            return contents
+            return json.loads(f.read())
+    except JSONDecodeError as e:
+        raise JSONError(e, path)
     except IOError as e:
         if fallback is not None:
             if e.errno == errno.ENOENT:
                 return fallback
 
-        raise
+        raise e
 
 
 def _modify_json(path, transform):
@@ -223,13 +213,13 @@ def _write_default(domain, key, value, force=None, debug=None):
         debug = False
 
     key_types = {
-        "-bool": bool,
-        "-float": float,
-        "-float": int
+        bool: "-bool",
+        float: "-float",
+        int: "-int"
     }
 
     key_type = next(
-        (k for k, t in key_types.iteritems() if isinstance(value, t)),
+        (k for t, k in key_types.iteritems() if isinstance(value, t)),
         "-string"
     )
 
@@ -294,7 +284,7 @@ def _make_symlink(source, target, debug=None, force=None):
     return linked
 
 
-def _remove_dead_targets(targets, debug=None):
+def _remove_dead_targets(targets):
     for target in targets:
         if os.path.islink(target) and os.path.samefile(
             CIDER_DIR,
@@ -313,7 +303,7 @@ def _collapseuser(path):
     return path
 
 
-def _apply_icon(app, icon, debug=None):
+def _apply_icon(app, icon):
     app_path = osx.path_for_app(app)
     if not app_path:
         raise AppMissingError("Application not found: '{0}'".format(app))
@@ -383,14 +373,17 @@ def restore(debug=None):
         _safe_install(cask, debug=debug, cask=True)
 
     relink(debug)
-    apply_defaults(debug)
-    apply_icons(debug)
+    apply_defaults()
+    apply_icons()
 
     for script in bootstrap.get("after-scripts", []):
         _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
 
 
 def install(*formulas, **kwargs):
+    def transform(formula):
+        return lambda x: x + [formula] if formula not in x else x
+
     formulas = list(formulas) or []
     cask = kwargs.get("cask", False)
     force = kwargs.get("force", False)
@@ -406,7 +399,7 @@ def install(*formulas, **kwargs):
     for formula in formulas:
         if _modify_bootstrap(
             "casks" if cask else "formulas",
-            transform=lambda x: x + [formula] if formula not in x else x
+            transform=transform(formula)
         ):
             tty.puts("Added {0} to bootstrap".format(formula))
         else:
@@ -417,6 +410,10 @@ def install(*formulas, **kwargs):
 
 
 def rm(*formulas, **kwargs):
+    # Avoid pylint scoping warning W0640
+    def transform(formula):
+        return lambda xs: [x for x in xs if x != formula]
+
     formulas = list(formulas) or []
     cask = kwargs.get("cask", False)
     verbose = kwargs.get("verbose", False)
@@ -431,7 +428,7 @@ def rm(*formulas, **kwargs):
     for formula in formulas:
         if _modify_bootstrap(
             "casks" if cask else "formulas",
-            transform=lambda xs: [x for x in xs if x != formula]
+            transform=transform(formula)
         ):
             tty.puts("Removed {0} from bootstrap".format(formula))
         else:
@@ -503,7 +500,7 @@ def relink(debug=None, force=None):
             _make_symlink(source, source_target, debug, force)
             new_targets.append(source_target)
 
-    _remove_dead_targets(set(previous_targets) - set(new_targets), debug)
+    _remove_dead_targets(set(previous_targets) - set(new_targets))
     _mkdir_p(os.path.dirname(SYMLINK_TARGETS_FILE))
     _write_json(SYMLINK_TARGETS_FILE, sorted(new_targets))
 
@@ -530,7 +527,7 @@ def missing(cask=None, debug=None):
     return sorted(filter(brew_orphan, set(brewed).difference(formulas)))
 
 
-def ls(formula, cask=None, debug=None):
+def ls(formula, cask=None):
     formulas = installed(cask)
     if formula:
         formulas = (x for x in formulas if x.startswith(formula))
@@ -546,7 +543,6 @@ def list_missing(cask=None, debug=None):
     missing_items = missing(cask, debug)
     if missing_items:
         suffix = "s" if len(missing_items) != 1 else ""
-        command = "brew{0}"
         fmt = "{0} missing formula{1} (tip: try `brew uses --installed` " + \
               "to see what's using it)"
         tty.puterr(fmt.format(len(missing_items), suffix), warning=True)
@@ -565,9 +561,9 @@ def list_missing(cask=None, debug=None):
 
 def set_default(domain, key, value, force=None, debug=None):
     try:
-        json_value = json.loads(_defaults_false_re.sub(
+        json_value = json.loads(_DEFAULTS_FALSE_RE.sub(
             "false",
-            _defaults_true_re.sub("true", str(value))
+            _DEFAULTS_TRUE_RE.sub("true", str(value))
         ))
     except ValueError:
         json_value = str(value)
@@ -593,7 +589,7 @@ def remove_default(domain, key, debug=None):
         tty.puts("Updated defaults")
 
 
-def apply_defaults(debug=None):
+def apply_defaults():
     defaults = _read_json(DEFAULTS_FILE, {})
     for domain in defaults:
         options = defaults[domain]
@@ -606,22 +602,22 @@ def apply_defaults(debug=None):
 def run_scripts(debug=None):
     bootstrap = _read_bootstrap()
     scripts = bootstrap.get("before-scripts", []) + \
-       bootstrap.get("after-scripts", [])
+        bootstrap.get("after-scripts", [])
     for script in scripts:
         _spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
 
 
-def set_icon(app, icon, debug=None):
+def set_icon(app, icon):
     def transform(bootstrap):
         icons = bootstrap.get("icons", {})
         icons[app] = icon
         return bootstrap
 
     _modify_json(BOOTSTRAP_FILE, transform)
-    _apply_icon(app, icon, debug=debug)
+    _apply_icon(app, icon)
 
 
-def remove_icon(app, debug=None):
+def remove_icon(app):
     def transform(bootstrap):
         icons = bootstrap.get("icons", {})
         del icons[app]
@@ -635,10 +631,10 @@ def remove_icon(app, debug=None):
     osx.remove_icon(app_path)
 
 
-def apply_icons(debug=None):
+def apply_icons():
     bootstrap = _read_json(BOOTSTRAP_FILE)
     icons = bootstrap.get("icons", {})
     for app, icon in icons.iteritems():
-        _apply_icon(app, icon, debug)
+        _apply_icon(app, icon)
 
     tty.puts("Applied icons")

@@ -46,36 +46,33 @@ class CLI(click.Group):
 
 
 @click.command(cls=CLI)
-@click.pass_context
-def cli(ctx):
+def cli():
     pass
 
 
 @cli.command()
-@click.option("-f", "--force", is_flag=True)
-@click.option("-v", "--verbose", is_flag=True)
-@click.option("-d", "--debug", is_flag=True)
 @click.argument("command")
 @click.argument("arg", required=False, nargs=-1)
+@click.option("-f", "--force", is_flag=True)
 @click.option("-d", "--debug", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
 @click.pass_context
 def cask(ctx, command, arg, force=None, verbose=None, debug=None):
-    funcByCommand = {
+    func_by_cmd = {
         "install": cask_install,
         "rm": cask_rm,
         "missing": cask_missing,
         "list": cask_list
     }
 
-    argsByCommand = {
+    args_by_cmd = {
         "install": ["formula", "force", "verbose", "debug"],
         "rm": ["formula", "verbose", "debug"],
         "missing": ["debug"],
         "list": ["debug"]
     }
 
-    args = argsByCommand.get(command, [])
+    args = args_by_cmd.get(command, [])
     kwargs = {
         "formula": arg,
         "force": force,
@@ -84,7 +81,7 @@ def cask(ctx, command, arg, force=None, verbose=None, debug=None):
     }
     kwargs = {k: v for k, v in kwargs.iteritems() if k in args}
 
-    func = funcByCommand[command]
+    func = func_by_cmd[command]
     if func:
         ctx.invoke(func, **kwargs)
 
@@ -93,13 +90,6 @@ def cask(ctx, command, arg, force=None, verbose=None, debug=None):
 @click.option("-d", "--debug", is_flag=True)
 def restore(debug=None):
     cider.restore(debug=debug)
-
-
-@cli.command()
-@click.option("-d", "--debug", is_flag=True)
-@click.argument("gh-path", required=False)
-def fetch(gh_path, debug=None):
-    cider.fetch(gh_path, debug=debug)
 
 
 @cli.command()
@@ -137,32 +127,15 @@ def untap(tap, verbose=None, debug=None):
 
 @cli.command()
 @click.option("-d", "--debug", is_flag=True)
-@click.argument("source")
-@click.argument("target")
-def link(source, target, debug=None):
-    cider.link(source, target, debug=debug)
-
-
-@cli.command()
-@click.option("-d", "--debug", is_flag=True)
-@click.argument("source")
-@click.argument("target")
-def unlink(source, target, debug=None):
-    cider.unlink(source, target, debug=debug)
-
-
-@cli.command()
-@click.option("-d", "--debug", is_flag=True)
 @click.option("-f", "--force", is_flag=True)
 def relink(debug=None, force=None):
     cider.relink(debug=debug, force=force)
 
 
-@cli.command()
-@click.option("-d", "--debug", is_flag=True)
+@cli.command("list")
 @click.argument("formula", required=False)
-def list(formula, debug=None):
-    cider.ls(formula, debug=debug)
+def ls(formula):
+    cider.ls(formula)
 
 
 @cli.command()
@@ -196,9 +169,8 @@ def cask_rm(formula, verbose=None, debug=None):
 
 @cli.command("cask list")
 @click.argument("formula", required=False)
-@click.option("-d", "--debug", is_flag=True)
-def cask_list(formula, debug=None):
-    cider.ls(formula, debug=debug, cask=True)
+def cask_list(formula):
+    cider.ls(formula, cask=True)
 
 
 @cli.command("cask missing")
@@ -208,6 +180,9 @@ def cask_missing(debug=None):
 
 
 @cli.command("set-default")
+@click.argument("name")
+@click.argument("key")
+@click.argument("value")
 @click.option("-g", "--globalDomain", is_flag=True)
 @click.option("-f", "--force", is_flag=True)
 @click.option("-d", "--debug", is_flag=True)
@@ -215,9 +190,6 @@ def cask_missing(debug=None):
 @click.option("-float", is_flag=True, expose_value=False)
 @click.option("-string", is_flag=True, expose_value=False)
 @click.option("-bool", is_flag=True, expose_value=False)
-@click.argument("name")
-@click.argument("key")
-@click.argument("value", required=False)
 def set_default(name, key, value, globaldomain=None, force=None, debug=None):
     if globaldomain:
         name, key, value = "NSGlobalDomain", name, key
@@ -242,30 +214,26 @@ def remove_default(name, key, globaldomain=None, debug=None):
 
 
 @cli.command("apply-defaults")
-@click.option("-d", "--debug", is_flag=True)
-def apply_defaults(debug=None):
-    cider.apply_defaults(debug=debug)
+def apply_defaults():
+    cider.apply_defaults()
 
 
 @cli.command("set-icon")
-@click.option("-d", "--debug", is_flag=True)
 @click.argument("app")
 @click.argument("icon")
-def set_icon(app, icon, debug=None):
-    cider.set_icon(app, icon, debug=debug)
+def set_icon(app, icon):
+    cider.set_icon(app, icon)
 
 
 @cli.command("remove-icon")
-@click.option("-d", "--debug", is_flag=True)
 @click.argument("app")
-def remove_icon(app, debug=None):
-    cider.remove_icon(app, debug=debug)
+def remove_icon(app):
+    cider.remove_icon(app)
 
 
 @cli.command("apply-icons")
-@click.option("-d", "--debug", is_flag=True)
-def apply_defaults(debug=None):
-    cider.apply_icons(debug=debug)
+def apply_icons():
+    cider.apply_icons()
 
 
 @cli.command("run-scripts")
@@ -276,7 +244,7 @@ def run_scripts(debug=None):
 
 def main():
     try:
-        cli(standalone_mode=False)
+        cli.main(standalone_mode=False)
     except CalledProcessError as e:
         tty.puterr("`{0}` failed with code {1}".format(
             " ".join(e.cmd),

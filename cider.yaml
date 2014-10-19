@@ -1,0 +1,11 @@
+inherits:
+    - strictness_high
+
+pylint:
+  disable:
+    - C0103
+    - C0325
+    - R0913
+    - W0621
+  options:
+    generated-members: __globals__

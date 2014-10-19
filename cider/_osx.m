@@ -1,6 +1,6 @@
 #import <AppKit/AppKit.h>
 #include <Python.h>
-#import <errno.h>
+#include <errno.h>
 
 static PyObject *setIcon(NSString *filePath, NSString *iconPath)
 {
@@ -25,7 +25,8 @@ static PyObject *setIcon(NSString *filePath, NSString *iconPath)
     Py_RETURN_NONE;
 }
 
-static void setPyErrorFromNSError(NSError *error) {
+static void setPyErrorFromNSError(NSError *error)
+{
     NSArray *keys = @[NSLocalizedDescriptionKey, NSLocalizedFailureReasonErrorKey];
     NSMutableArray *errors = [NSMutableArray arrayWithCapacity:keys.count];
     for (NSString *key in keys) {

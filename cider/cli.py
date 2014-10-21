@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
+from cider import Cider
 from subprocess import CalledProcessError
 from webbrowser import open as urlopen
 import _tty as tty
@@ -98,59 +99,59 @@ def cask(ctx, command, arg, force=None, verbose=None, debug=None):
 @cli.command()
 @click.option("-d", "--debug", is_flag=True)
 def restore(debug=None):
-    cider.restore(debug=debug)
+    Cider(debug).restore()
 
 
 @cli.command()
+@click.option("-d", "--debug", is_flag=True)
+@click.option("-v", "--verbose", is_flag=True)
 @click.option("-f", "--force", is_flag=True)
-@click.option("-d", "--debug", is_flag=True)
-@click.option("-v", "--verbose", is_flag=True)
 @click.argument("formula", nargs=-1, required=True)
-def install(formula, force=None, verbose=None, debug=None):
-    cider.install(force=force, debug=debug, verbose=verbose, *formula)
+def install(formula, debug=None, verbose=None, force=None):
+    Cider(debug, verbose).install(force=force, *formula)
 
 
 @cli.command()
 @click.option("-d", "--debug", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
 @click.argument("formula", nargs=-1, required=True)
-def rm(formula, verbose=None, debug=None):
-    cider.rm(*formula, debug=debug, verbose=verbose)
+def rm(formula, debug=None, verbose=None):
+    Cider(debug, verbose).rm(*formula)
 
 
 @cli.command()
 @click.option("-d", "--debug", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
 @click.argument("tap", required=False)
-def tap(tap, verbose=None, debug=None):
-    cider.tap(tap, debug=debug, verbose=verbose)
+def tap(tap, debug=None, verbose=None):
+    Cider(debug, verbose).tap(tap)
 
 
 @cli.command()
 @click.option("-d", "--debug", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
 @click.argument("tap")
-def untap(tap, verbose=None, debug=None):
-    cider.untap(tap, debug=debug, verbose=verbose)
+def untap(tap, debug=None, verbose=None):
+    Cider(debug, verbose).untap(tap)
 
 
 @cli.command()
 @click.option("-d", "--debug", is_flag=True)
 @click.option("-f", "--force", is_flag=True)
 def relink(debug=None, force=None):
-    cider.relink(debug=debug, force=force)
+    Cider(debug).relink(force=force)
 
 
 @cli.command("list")
 @click.argument("formula", required=False)
 def ls(formula):
-    cider.ls(formula)
+    Cider().ls(formula)
 
 
 @cli.command()
 @click.option("-d", "--debug", is_flag=True)
 def missing(debug=None):
-    cider.list_missing(debug=debug)
+    Cider(debug).list_missing()
 
 
 @cli.command("cask install")
@@ -158,34 +159,28 @@ def missing(debug=None):
 @click.option("-v", "--verbose", is_flag=True)
 @click.option("-f", "--force", is_flag=True)
 @click.argument("formula", nargs=-1, required=True)
-def cask_install(formula, force=None, verbose=None, debug=None):
-    cider.install(
-        *formula,
-        cask=True,
-        force=force,
-        debug=debug,
-        verbose=verbose
-    )
+def cask_install(formula, force=None, debug=None, verbose=None):
+    Cider(debug, verbose, cask=True).install(*formula, force=force)
 
 
 @cli.command("cask rm")
 @click.option("-v", "--verbose", is_flag=True)
 @click.option("-d", "--debug", is_flag=True)
 @click.argument("formula", nargs=-1, required=True)
-def cask_rm(formula, verbose=None, debug=None):
-    cider.rm(*formula, cask=True, debug=debug, verbose=verbose)
+def cask_rm(formula, debug=None, verbose=None):
+    Cider(debug, verbose, cask=True).rm(*formula)
 
 
 @cli.command("cask list")
 @click.argument("formula", required=False)
 def cask_list(formula):
-    cider.ls(formula, cask=True)
+    Cider(cask=True).ls(formula)
 
 
 @cli.command("cask missing")
 @click.option("-d", "--debug", is_flag=True)
 def cask_missing(debug=None):
-    cider.list_missing(cask=True, debug=debug)
+    Cider(debug, cask=True).list_missing()
 
 
 @cli.command("set-default")
@@ -202,12 +197,11 @@ def cask_missing(debug=None):
 def set_default(name, key, value, globaldomain=None, force=None, debug=None):
     if globaldomain:
         name, key, value = "NSGlobalDomain", name, key
-    cider.set_default(
+    Cider(debug).set_default(
         name,
         key,
         value,
-        force=force,
-        debug=debug
+        force=force
     )
 
 
@@ -216,40 +210,40 @@ def set_default(name, key, value, globaldomain=None, force=None, debug=None):
 @click.option("-d", "--debug", is_flag=True)
 @click.argument("name")
 @click.argument("key", required=False)
-def remove_default(name, key, globaldomain=None, debug=None):
+def remove_default(name, key, globaldomain=None):
     if globaldomain:
         name, key = "NSGlobalDomain", name
-    cider.remove_default(name, key, debug=debug)
+    Cider().remove_default(name, key)
 
 
 @cli.command("apply-defaults")
 @click.option("-d", "--debug", is_flag=True)
 def apply_defaults(debug=None):
-    cider.apply_defaults(debug)
+    Cider(debug).apply_defaults()
 
 
 @cli.command("set-icon")
 @click.argument("app")
 @click.argument("icon")
 def set_icon(app, icon):
-    cider.set_icon(app, icon)
+    Cider().set_icon(app, icon)
 
 
 @cli.command("remove-icon")
 @click.argument("app")
 def remove_icon(app):
-    cider.remove_icon(app)
+    Cider().remove_icon(app)
 
 
 @cli.command("apply-icons")
 def apply_icons():
-    cider.apply_icons()
+    Cider().apply_icons()
 
 
 @cli.command("run-scripts")
 @click.option("-d", "--debug", is_flag=True)
 def run_scripts(debug=None):
-    cider.run_scripts(debug=debug)
+    Cider(debug).run_scripts()
 
 
 def main():

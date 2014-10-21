@@ -18,13 +18,6 @@ import sys
 
 JSONDecodeError = ValueError
 
-CIDER_DIR = os.path.join(os.path.expanduser("~"), ".cider")
-SYMLINK_DIR = os.path.join(CIDER_DIR, "symlinks")
-BOOTSTRAP_FILE = os.path.join(CIDER_DIR, "bootstrap.json")
-DEFAULTS_FILE = os.path.join(CIDER_DIR, "defaults.json")
-CACHE_DIR = os.path.join(CIDER_DIR, ".cache")
-SYMLINK_TARGETS_FILE = os.path.join(CACHE_DIR, "symlink_targets.json")
-
 _DEFAULTS_TRUE_RE = re.compile(r"\bY(ES)?\b", re.I)
 _DEFAULTS_FALSE_RE = re.compile(r"\bN(O)?\b", re.I)
 
@@ -75,6 +68,340 @@ class AppMissingError(CiderException):
     pass
 
 
+class Cider(object):
+    def __init__(self, cask=None, debug=None, verbose=None, cider_dir=None):
+        self.cask = cask if cask is not None else False
+        self.debug = debug if debug is not None else False
+        self.verbose = verbose if verbose is not None else False
+        self.brew = Brew(cask, debug, verbose)
+        self.defaults = Defaults(debug)
+        self.cider_dir = cider_dir if cider_dir is not None else os.path.join(
+            os.path.expanduser("~"),
+            ".cider"
+        )
+
+    @property
+    def symlink_dir(self):
+        return os.path.join(self.cider_dir, "symlinks")
+
+    @property
+    def bootstrap_file(self):
+        return os.path.join(self.cider_dir, "bootstrap.json")
+
+    @property
+    def defaults_file(self):
+        return os.path.join(self.cider_dir, "defaults.json")
+
+    @property
+    def cache_dir(self):
+        return os.path.join(self.cider_dir, ".cache")
+
+    @property
+    def symlink_targets_file(self):
+        return os.path.join(self.cache_dir, "symlink_targets.json")
+
+    def read_bootstrap(self):
+        if not os.path.isfile(self.bootstrap_file):
+            raise BootstrapMissingError(
+                "Bootstrap file not found. Expected at {0}".format(
+                    _collapseuser(self.bootstrap_file)
+                ),
+                self.bootstrap_file
+            )
+
+        return _read_json(self.bootstrap_file)
+
+    def read_defaults(self):
+        return _read_json(self.defaults_file, {})
+
+    def _modify_bootstrap(self, key, transform=None):
+        if transform is None:
+            transform = lambda x: x
+
+        def outer_transform(bootstrap):
+            bootstrap[key] = sorted(transform(bootstrap.get(key, [])))
+            return bootstrap
+
+        return _modify_json(self.bootstrap_file, outer_transform)
+
+    def _modify_defaults(self, domain, transform):
+        def outer_transform(defaults):
+            defaults[domain] = transform(defaults.get(domain, {}))
+            return defaults
+
+        return _modify_json(self.defaults_file, outer_transform)
+
+    def _remove_dead_targets(self, targets):
+        for target in targets:
+            if os.path.islink(target) and os.path.samefile(
+                self.cider_dir,
+                os.path.commonprefix([self.cider_dir, os.path.realpath(target)]),
+            ):
+                os.remove(target)
+                print(tty.progress("Removed dead symlink: {0}".format(
+                    _collapseuser(target))
+                ))
+
+    def restore(self):
+        macos_version = platform.mac_ver()[0]
+
+        if int(macos_version.split(".")[1]) < 9:
+            raise UnsupportedOSError(
+                "Unsupported OS version; please upgrade to 10.9 or later " +
+                "and try again.",
+                macos_version
+            )
+        elif not os.path.isdir("/Applications/Xcode.app"):
+            raise XcodeMissingError(
+                "Xcode not installed",
+                "https://itunes.apple.com/us/app/xcode/id497799835?mt=12"
+            )
+        elif spawn(["which", "brew"], check_call=False, debug=self.debug,
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE):
+            raise BrewMissingError(
+                "Homebrew not installed",
+                "http://brew.sh/#install"
+            )
+
+        bootstrap = self.read_bootstrap()
+        casks = bootstrap.get("casks", [])
+        formulas = bootstrap.get("formulas", [])
+        dependencies = bootstrap.get("dependencies", {})
+
+        for script in bootstrap.get("before-scripts", []):
+            spawn([script], shell=True, debug=self.debug, cwd=self.cider_dir)
+
+        for tap in bootstrap.get("taps", []):
+            self.brew.tap(tap)
+
+        for formula in formulas:
+            if formula in dependencies:
+                deps = dependencies[formula]
+                deps = deps if isinstance(deps, list) else [deps]
+                deps = (
+                    # Currently only cask dependencies are supported.
+                    dep.split("/")[1] for dep in deps if dep.startswith("cask/")
+                )
+
+                for cask in deps:
+                    Brew(cask=True).safe_install(cask)
+                    del casks[casks.index(cask)]
+
+            self.brew.safe_install(formula)
+
+        for cask in casks:
+            Brew(cask=True).safe_install(cask)
+
+        self.relink()
+        self.apply_defaults()
+        self.apply_icons()
+
+        for script in bootstrap.get("after-scripts", []):
+            spawn([script], shell=True, debug=self.debug, cwd=self.cider_dir)
+
+    def install(self, *formulas, **kwargs):
+        # Avoid pylint scoping warning W0640
+        def transform(formula):
+            return lambda x: x + [formula] if formula not in x else x
+
+        formulas = list(formulas) or []
+        force = kwargs.get("force", False)
+
+        self.brew.install(*formulas, force=force)
+        for formula in formulas:
+            if self._modify_bootstrap(
+                "casks" if self.cask else "formulas",
+                transform=transform(formula)
+            ):
+                tty.puts("Added {0} to bootstrap".format(formula))
+            else:
+                tty.puterr(
+                    "{0} already bootstrapped; skipping install".format(formula),
+                    warning=True
+                )
+
+    def rm(self, *formulas):
+        def transform(formula):
+            return lambda xs: [x for x in xs if x != formula]
+
+        formulas = list(formulas) or []
+        self.brew.rm(*formulas)
+
+        for formula in formulas:
+            if self._modify_bootstrap(
+                "casks" if self.cask else "formulas",
+                transform=transform(formula)
+            ):
+                tty.puts("Removed {0} from bootstrap".format(formula))
+            else:
+                tty.puterr("{0} not found in bootstrap".format(formula))
+
+    def tap(self, tap):
+        self.brew.tap(tap)
+        if tap is not None:
+            if self._modify_bootstrap(
+                "taps",
+                transform=lambda x: x + [tap] if tap not in x else x
+            ):
+                tty.puts("Added {0} tap to bootstrap".format(tap))
+            else:
+                tty.puterr("{0} tap already bootstrapped".format(tap))
+
+    def untap(self, tap):
+        self.brew.untap(tap)
+        if self._modify_bootstrap(
+            "taps",
+            transform=lambda xs: [x for x in xs if x != tap]
+        ):
+            tty.puts("Removed {0} tap from bootstrap".format(tap))
+        else:
+            tty.puterr("{0} tap not found in bootstrapped".format(tap))
+
+    def relink(self, force=None):
+        force = force if force is not None else False
+        symlinks = self.read_bootstrap().get("symlinks", {})
+        previous_targets = _read_json(self.symlink_targets_file, [])
+        new_targets = []
+
+        for source_glob, target in symlinks.iteritems():
+            _mkdir_p(os.path.dirname(os.path.expanduser(target)))
+            for source in glob.iglob(os.path.join(self.symlink_dir, source_glob)):
+                source = os.path.join(self.cider_dir, source)
+                source_target = os.path.expanduser(target)
+                if target.endswith(os.path.sep) or target == "~":
+                    source_target = os.path.join(
+                        source_target,
+                        os.path.basename(source)
+                    )
+
+                _make_symlink(source, source_target, self.debug, force)
+                new_targets.append(source_target)
+
+        self._remove_dead_targets(set(previous_targets) - set(new_targets))
+        _mkdir_p(os.path.dirname(self.symlink_targets_file))
+        _write_json(self.symlink_targets_file, sorted(new_targets))
+
+    def installed(self):
+        bootstrap = self.read_bootstrap()
+        key = "casks" if self.cask else "formulas"
+        return bootstrap.get(key, [])
+
+    def missing(self):
+        formulas = [item.split()[0].strip() for item in self.installed()]
+        brewed = self.brew.ls()
+
+        def brew_orphan(formula):
+            uses = self.brew.uses(formula)
+            return len(set(formulas).intersection(set(uses))) == 0
+
+        return sorted(filter(brew_orphan, set(brewed).difference(formulas)))
+
+    def ls(self, formula):
+        formulas = self.installed()
+        if formula:
+            formulas = (x for x in formulas if x.startswith(formula))
+        if formulas:
+            print("\n".join(formulas))
+        else:
+            tty.puterr("nothing to list", prefix="Error")
+
+    def list_missing(self):
+        missing_items = self.missing()
+        if missing_items:
+            suffix = "s" if len(missing_items) != 1 else ""
+            fmt = "{0} missing formula{1} (tip: try `brew uses --installed` " + \
+                  "to see what's using it)"
+            tty.puterr(fmt.format(len(missing_items), suffix), warning=True)
+
+            print("\n".join(missing_items) + "\n")
+            sys.stdout.write("Add missing items to bootstrap? [y/N] ")
+
+            if sys.stdin.read(1).lower() == "y":
+                for formula in missing_items:
+                    self.install(formula)
+        else:
+            print("Everything up to date.")
+
+        return missing_items
+
+    def set_default(self, domain, key, value, force=None):
+        if isinstance(value, str):
+            try:
+                json_value = json.loads(_DEFAULTS_FALSE_RE.sub(
+                    "false",
+                    _DEFAULTS_TRUE_RE.sub("true", str(value))
+                ))
+            except ValueError:
+                json_value = str(value)
+        else:
+            json_value = value
+
+        self.defaults.write(domain, key, json_value, force)
+
+        def transform(defaults):
+            defaults[key] = json_value
+            return defaults
+
+        if self._modify_defaults(domain, transform):
+            tty.puts("Updated defaults")
+
+    def remove_default(self, domain, key):
+        self.defaults.delete(domain, key)
+
+        def transform(defaults):
+            del defaults[key]
+            return defaults
+
+        if self._modify_defaults(domain, transform):
+            tty.puts("Updated defaults")
+
+    def apply_defaults(self):
+        defaults = self.read_defaults()
+        for domain in defaults:
+            options = defaults[domain]
+            for key, value in options.iteritems():
+                self.defaults.write(domain, key, value)
+
+        tty.puts("Applied defaults")
+
+    def run_scripts(self):
+        bootstrap = self.read_bootstrap()
+        scripts = bootstrap.get("before-scripts", []) + \
+            bootstrap.get("after-scripts", [])
+        for script in scripts:
+            spawn([script], shell=True, debug=self.debug, cwd=self.cider_dir)
+
+    def set_icon(self, app, icon):
+        def transform(bootstrap):
+            icons = bootstrap.get("icons", {})
+            icons[app] = icon
+            return bootstrap
+
+        _modify_json(self.bootstrap_file, transform)
+        _apply_icon(app, icon)
+
+    def remove_icon(self, app):
+        def transform(bootstrap):
+            icons = bootstrap.get("icons", {})
+            del icons[app]
+            return bootstrap
+
+        app_path = osx.path_for_app(app)
+        if not app_path:
+            raise AppMissingError("Application not found: '{0}'".format(app))
+
+        _modify_json(self.bootstrap_file, transform)
+        osx.remove_icon(app_path)
+
+    def apply_icons(self):
+        bootstrap = _read_json(self.bootstrap_file)
+        icons = bootstrap.get("icons", {})
+        for app, icon in icons.iteritems():
+            _apply_icon(app, icon)
+
+        tty.puts("Applied icons")
+
+
 def _curl(url, path):
     return spawn(["curl", url, "-o", path, "--progress-bar"])
 
@@ -99,9 +426,8 @@ def _read_json(path, fallback=None):
     except JSONDecodeError as e:
         raise JSONError(e, path)
     except IOError as e:
-        if fallback is not None:
-            if e.errno == errno.ENOENT:
-                return fallback
+        if fallback is not None and e.errno == errno.ENOENT:
+            return fallback
 
         raise e
 
@@ -140,35 +466,11 @@ def _write_json(path, contents):
         ))
 
 
-def _read_bootstrap():
-    if not os.path.isfile(BOOTSTRAP_FILE):
-        raise BootstrapMissingError(
-            "Bootstrap file not found. Expected at {0}".format(
-                _collapseuser(BOOTSTRAP_FILE)
-            ),
-            BOOTSTRAP_FILE
-        )
-
-    return _read_json(BOOTSTRAP_FILE)
-
-
-def _modify_bootstrap(key, transform=None):
-    if transform is None:
-        transform = lambda x: x
-
-    def outer_transform(bootstrap):
-        bootstrap[key] = sorted(transform(bootstrap.get(key, [])))
-        return bootstrap
-
-    return _modify_json(BOOTSTRAP_FILE, outer_transform)
-
-
-def _modify_defaults(domain, transform):
-    def outer_transform(defaults):
-        defaults[domain] = transform(defaults.get(domain, {}))
-        return defaults
-
-    return _modify_json(DEFAULTS_FILE, outer_transform)
+def _collapseuser(path):
+    home_dir = os.environ.get("HOME", pwd.getpwuid(os.getuid()).pw_dir)
+    if os.path.samefile(home_dir, os.path.commonprefix([path, home_dir])):
+        return os.path.join("~", os.path.relpath(path, home_dir))
+    return path
 
 
 def _make_symlink(source, target, debug=None, force=None):
@@ -227,25 +529,6 @@ def _make_symlink(source, target, debug=None, force=None):
     return linked
 
 
-def _remove_dead_targets(targets):
-    for target in targets:
-        if os.path.islink(target) and os.path.samefile(
-            CIDER_DIR,
-            os.path.commonprefix([CIDER_DIR, os.path.realpath(target)]),
-        ):
-            os.remove(target)
-            print(tty.progress("Removed dead symlink: {0}".format(
-                _collapseuser(target))
-            ))
-
-
-def _collapseuser(path):
-    home_dir = os.environ.get("HOME", pwd.getpwuid(os.getuid()).pw_dir)
-    if os.path.samefile(home_dir, os.path.commonprefix([path, home_dir])):
-        return os.path.join("~", os.path.relpath(path, home_dir))
-    return path
-
-
 def _apply_icon(app, icon):
     app_path = osx.path_for_app(app)
     if not app_path:
@@ -261,292 +544,3 @@ def _apply_icon(app, icon):
         icon_path = icon
 
     osx.set_icon(app_path, icon_path)
-
-
-def restore(debug=None):
-    if debug is None:
-        debug = False
-    macos_version = platform.mac_ver()[0]
-
-    if int(macos_version.split(".")[1]) < 9:
-        raise UnsupportedOSError(
-            "Unsupported OS version; please upgrade to 10.9 or later " +
-            "and try again.",
-            macos_version
-        )
-    elif not os.path.isdir("/Applications/Xcode.app"):
-        raise XcodeMissingError(
-            "Xcode not installed",
-            "https://itunes.apple.com/us/app/xcode/id497799835?mt=12"
-        )
-    elif spawn(["which", "brew"], check_call=False, debug=debug,
-               stdout=subprocess.PIPE, stderr=subprocess.PIPE):
-        raise BrewMissingError(
-            "Homebrew not installed",
-            "http://brew.sh/#install"
-        )
-
-    bootstrap = _read_bootstrap()
-    casks = bootstrap.get("casks", [])
-    formulas = bootstrap.get("formulas", [])
-    dependencies = bootstrap.get("dependencies", {})
-
-    for script in bootstrap.get("before-scripts", []):
-        spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
-
-    for tap in bootstrap.get("taps", []):
-        Brew(debug).tap(tap)
-
-    for formula in formulas:
-        if formula in dependencies:
-            deps = dependencies[formula]
-            deps = deps if isinstance(deps, list) else [deps]
-            deps = (
-                # Currently only cask dependencies are supported.
-                dep.split("/")[1] for dep in deps if dep.startswith("cask/")
-            )
-
-            for cask in deps:
-                Brew(cask=True, debug=debug).safe_install(cask)
-                del casks[casks.index(cask)]
-
-        Brew(debug).safe_install(formula)
-
-    for cask in casks:
-        Brew(cask=True, debug=debug).safe_install(cask)
-
-    relink(debug)
-    apply_defaults()
-    apply_icons()
-
-    for script in bootstrap.get("after-scripts", []):
-        spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
-
-
-def install(*formulas, **kwargs):
-    def transform(formula):
-        return lambda x: x + [formula] if formula not in x else x
-
-    cask = kwargs.get("cask", False)
-    debug = kwargs.get("debug", False)
-    verbose = kwargs.get("verbose", False)
-    force = kwargs.get("force", False)
-
-    Brew(cask, debug, verbose).install(*formulas, force=force)
-    for formula in formulas:
-        if _modify_bootstrap(
-            "casks" if cask else "formulas",
-            transform=transform(formula)
-        ):
-            tty.puts("Added {0} to bootstrap".format(formula))
-        else:
-            tty.puterr(
-                "{0} already bootstrapped; skipping install".format(formula),
-                warning=True
-            )
-
-
-def rm(*formulas, **kwargs):
-    # Avoid pylint scoping warning W0640
-    def transform(formula):
-        return lambda xs: [x for x in xs if x != formula]
-
-    formulas = list(formulas) or []
-    cask = kwargs.get("cask", False)
-    verbose = kwargs.get("verbose", False)
-    debug = kwargs.get("debug", False)
-
-    Brew(cask, debug, verbose).rm(*formulas)
-
-    for formula in formulas:
-        if _modify_bootstrap(
-            "casks" if cask else "formulas",
-            transform=transform(formula)
-        ):
-            tty.puts("Removed {0} from bootstrap".format(formula))
-        else:
-            tty.puterr("{0} not found in bootstrap".format(formula))
-
-
-def tap(tap, debug=None, verbose=None):
-    Brew(debug, verbose).tap(tap)
-    if tap is not None:
-        if _modify_bootstrap(
-            "taps",
-            transform=lambda x: x + [tap] if tap not in x else x
-        ):
-            tty.puts("Added {0} tap to bootstrap".format(tap))
-        else:
-            tty.puterr("{0} tap already bootstrapped".format(tap))
-
-
-def untap(tap, verbose=None, debug=None):
-    Brew(debug, verbose).untap(tap)
-    if _modify_bootstrap(
-        "taps",
-        transform=lambda xs: [x for x in xs if x != tap]
-    ):
-        tty.puts("Removed {0} tap from bootstrap".format(tap))
-    else:
-        tty.puterr("{0} tap not found in bootstrapped".format(tap))
-
-
-def relink(debug=None, force=None):
-    if debug is None:
-        debug = False
-    if force is None:
-        force = False
-
-    symlinks = _read_bootstrap().get("symlinks", {})
-    previous_targets = _read_json(SYMLINK_TARGETS_FILE, [])
-    new_targets = []
-
-    for source_glob, target in symlinks.iteritems():
-        _mkdir_p(os.path.dirname(os.path.expanduser(target)))
-        for source in glob.iglob(os.path.join(SYMLINK_DIR, source_glob)):
-            source = os.path.join(CIDER_DIR, source)
-            source_target = os.path.expanduser(target)
-            if target.endswith(os.path.sep) or target == "~":
-                source_target = os.path.join(
-                    source_target,
-                    os.path.basename(source)
-                )
-
-            _make_symlink(source, source_target, debug, force)
-            new_targets.append(source_target)
-
-    _remove_dead_targets(set(previous_targets) - set(new_targets))
-    _mkdir_p(os.path.dirname(SYMLINK_TARGETS_FILE))
-    _write_json(SYMLINK_TARGETS_FILE, sorted(new_targets))
-
-
-def installed(cask=None):
-    if cask is None:
-        cask = False
-    bootstrap = _read_bootstrap()
-    key = "casks" if cask else "formulas"
-    return bootstrap.get(key, [])
-
-
-def missing(cask=None, debug=None):
-    formulas = [item.split()[0].strip() for item in installed(cask)]
-    brewed = Brew(cask, debug).ls()
-
-    def brew_orphan(formula):
-        uses = Brew(cask, debug).uses(formula)
-        return len(set(formulas).intersection(set(uses))) == 0
-
-    return sorted(filter(brew_orphan, set(brewed).difference(formulas)))
-
-
-def ls(formula, cask=None):
-    formulas = installed(cask)
-    if formula:
-        formulas = (x for x in formulas if x.startswith(formula))
-    if formulas:
-        print("\n".join(formulas))
-    else:
-        tty.puterr("nothing to list", prefix="Error")
-
-
-def list_missing(cask=None, debug=None):
-    if cask is None:
-        cask = False
-    missing_items = missing(cask, debug)
-    if missing_items:
-        suffix = "s" if len(missing_items) != 1 else ""
-        fmt = "{0} missing formula{1} (tip: try `brew uses --installed` " + \
-              "to see what's using it)"
-        tty.puterr(fmt.format(len(missing_items), suffix), warning=True)
-
-        print("\n".join(missing_items) + "\n")
-        sys.stdout.write("Add missing items to bootstrap? [y/N] ")
-
-        if sys.stdin.read(1).lower() == "y":
-            for formula in missing_items:
-                install(formula, cask)
-    else:
-        print("Everything up to date.")
-
-    return missing_items
-
-
-def set_default(domain, key, value, force=None, debug=None):
-    try:
-        json_value = json.loads(_DEFAULTS_FALSE_RE.sub(
-            "false",
-            _DEFAULTS_TRUE_RE.sub("true", str(value))
-        ))
-    except ValueError:
-        json_value = str(value)
-
-    Defaults(debug).write(domain, key, json_value, force)
-
-    def transform(defaults):
-        defaults[key] = json_value
-        return defaults
-
-    if _modify_defaults(domain, transform):
-        tty.puts("Updated defaults")
-
-
-def remove_default(domain, key, debug=None):
-    Defaults(debug).delete(domain, key)
-
-    def transform(defaults):
-        del defaults[key]
-        return defaults
-
-    if _modify_defaults(domain, transform):
-        tty.puts("Updated defaults")
-
-
-def apply_defaults(debug=None):
-    defaults = _read_json(DEFAULTS_FILE, {})
-    for domain in defaults:
-        options = defaults[domain]
-        for key, value in options.iteritems():
-            Defaults(debug).write(domain, key, value)
-
-    tty.puts("Applied defaults")
-
-
-def run_scripts(debug=None):
-    bootstrap = _read_bootstrap()
-    scripts = bootstrap.get("before-scripts", []) + \
-        bootstrap.get("after-scripts", [])
-    for script in scripts:
-        spawn([script], shell=True, debug=debug, cwd=CIDER_DIR)
-
-
-def set_icon(app, icon):
-    def transform(bootstrap):
-        icons = bootstrap.get("icons", {})
-        icons[app] = icon
-        return bootstrap
-
-    _modify_json(BOOTSTRAP_FILE, transform)
-    _apply_icon(app, icon)
-
-
-def remove_icon(app):
-    def transform(bootstrap):
-        icons = bootstrap.get("icons", {})
-        del icons[app]
-        return bootstrap
-
-    app_path = osx.path_for_app(app)
-    if not app_path:
-        raise AppMissingError("Application not found: '{0}'".format(app))
-
-    _modify_json(BOOTSTRAP_FILE, transform)
-    osx.remove_icon(app_path)
-
-
-def apply_icons():
-    bootstrap = _read_json(BOOTSTRAP_FILE)
-    icons = bootstrap.get("icons", {})
-    for app, icon in icons.iteritems():
-        _apply_icon(app, icon)
-
-    tty.puts("Applied icons")

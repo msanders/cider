@@ -160,7 +160,7 @@ def missing(debug=None):
 @click.option("-f", "--force", is_flag=True)
 @click.argument("formula", nargs=-1, required=True)
 def cask_install(formula, force=None, debug=None, verbose=None):
-    Cider(debug, verbose, cask=True).install(*formula, force=force)
+    Cider(True, debug, verbose).install(*formula, force=force)
 
 
 @cli.command("cask rm")
@@ -168,7 +168,7 @@ def cask_install(formula, force=None, debug=None, verbose=None):
 @click.option("-d", "--debug", is_flag=True)
 @click.argument("formula", nargs=-1, required=True)
 def cask_rm(formula, debug=None, verbose=None):
-    Cider(debug, verbose, cask=True).rm(*formula)
+    Cider(True, debug, verbose).rm(*formula)
 
 
 @cli.command("cask list")
@@ -180,7 +180,7 @@ def cask_list(formula):
 @cli.command("cask missing")
 @click.option("-d", "--debug", is_flag=True)
 def cask_missing(debug=None):
-    Cider(debug, cask=True).list_missing()
+    Cider(True, debug).list_missing()
 
 
 @cli.command("set-default")

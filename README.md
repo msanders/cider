@@ -1,3 +1,7 @@
+[![PyPi version](https://pypip.in/version/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
+[![PyPi downloads](https://pypip.in/status/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
+[![PyPi status](https://pypip.in/download/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
+
 ## Start with a clean slate
 
 Cider is a simple wrapper for [Homebrew](http://brew.sh) and [Homebrew Cask](http://caskroom.io) that allows you to save your setup across different machines. This lets you to restore a backup without having to deal with the mess that was the state of your previous installation, or painstakingly babysit the process step-by-step.
@@ -8,7 +12,7 @@ Simply run the following on a new machine:
     cider restore
 
 
-... and you’ll be back up and running, with all of your applications and command line utilities re-installed (and config files restored).
+... and you’ll be back up and running, with all of your applications and command line utilities re-installed (and configurations restored).
 
 
 ## Installation

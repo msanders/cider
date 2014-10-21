@@ -349,7 +349,7 @@ class Cider(object):
         self.defaults.delete(domain, key)
 
         def transform(defaults):
-            del defaults[key]
+            defaults.pop(key, None)
             return defaults
 
         if self._modify_defaults(domain, transform):
@@ -433,27 +433,34 @@ def _read_json(path, fallback=None):
 
 
 def _modify_json(path, transform):
-    with open(path, "r+") as f:
-        try:
-            contents = json.loads(f.read())
-        except JSONDecodeError as e:
-            raise JSONError(e, path)
+    try:
+        f = open(path, "r+")
+        contents = json.loads(f.read())
+    except JSONDecodeError as e:
+        raise JSONError(e, path)
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            f = open(path, "w+")
+            contents = {}
+        else:
+            raise e
 
-        old_contents = contents
-        contents = transform(copy.deepcopy(contents))
-        changed = bool(old_contents != contents)
+    old_contents = contents
+    contents = transform(copy.deepcopy(contents))
+    changed = bool(old_contents != contents)
 
-        if changed:
-            f.seek(0)
-            f.write(json.dumps(
-                contents,
-                indent=4,
-                sort_keys=True,
-                separators=(',', ': ')
-            ))
-            f.truncate()
+    if changed:
+        f.seek(0)
+        f.write(json.dumps(
+            contents,
+            indent=4,
+            sort_keys=True,
+            separators=(',', ': ')
+        ))
+        f.truncate()
 
-        return changed
+    f.close()
+    return changed
 
 
 def _write_json(path, contents):

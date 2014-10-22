@@ -8,7 +8,7 @@ import pytest
 try:
     from mock import MagicMock
 except ImportError:
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock  # pylint: disable=F0401,E0611
 
 
 @pytest.mark.randomize(cask=bool)

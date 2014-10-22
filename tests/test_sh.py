@@ -13,8 +13,8 @@ try:
     from contextlib import nested as empty
     from mock import MagicMock
 except ImportError:
-    from contextlib import ExitStack as empty
-    from unittest.mock import MagicMock
+    from contextlib import ExitStack as empty  # noqa pylint: disable=E0611
+    from unittest.mock import MagicMock  # pylint: disable=F0401,E0611
 
 
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)

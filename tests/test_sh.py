@@ -3,13 +3,18 @@ from __future__ import absolute_import, print_function, unicode_literals
 from ._lib import Patcher
 from cider import _sh as sh
 from cider._sh import Brew, Defaults
-from contextlib import nested
-from mock import MagicMock
 from pytest import list_of
 from subprocess import CalledProcessError
 import pytest
 import random
 import subprocess
+
+try:
+    from contextlib import nested as empty
+    from mock import MagicMock
+except ImportError:
+    from contextlib import ExitStack as empty
+    from unittest.mock import MagicMock
 
 
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
@@ -59,7 +64,7 @@ class TestBrew(object):
 
     @pytest.mark.randomize(tap=str, use_tap=bool)
     def test_tap(self, cask, debug, verbose, tap, use_tap):
-        with pytest.raises(AssertionError) if cask else nested():
+        with pytest.raises(AssertionError) if cask else empty():
             brew = Brew(cask, debug, verbose)
             tap = tap if use_tap else None
             args = self.__cmd() + ["tap"] + ([tap] if tap is not None else [])
@@ -70,7 +75,7 @@ class TestBrew(object):
 
     @pytest.mark.randomize(tap=str)
     def test_untap(self, cask, debug, verbose, tap):
-        with pytest.raises(AssertionError) if cask else nested():
+        with pytest.raises(AssertionError) if cask else empty():
             brew = Brew(cask, debug, verbose)
             args = self.__cmd() + ["untap", tap]
             args += self.__flags(debug, verbose)

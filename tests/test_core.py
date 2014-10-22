@@ -2,9 +2,13 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from ._lib import assert_called_with_threshold
 from cider import Cider
-from mock import MagicMock
 from pytest import list_of
 import pytest
+
+try:
+    from mock import MagicMock
+except ImportError:
+    from unittest.mock import MagicMock
 
 
 @pytest.mark.randomize(cask=bool)

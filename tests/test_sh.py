@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
-from _lib import Patcher
+from ._lib import Patcher
 from cider import _sh as sh
 from cider._sh import Brew, Defaults
 from contextlib import nested
@@ -149,7 +149,7 @@ def test_spawn(args, check_call, check_output, debug):
         (subprocess, "call")
     ]
 
-    with Patcher(*patches):
+    with Patcher(patches):
         if check_output:
             expected_mock = subprocess.check_output = MagicMock()
         elif check_call:

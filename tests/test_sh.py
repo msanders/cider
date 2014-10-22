@@ -125,7 +125,7 @@ class TestDefaults(object):
     def test_write(self, debug, domain, key, value, force):
         defaults = Defaults(debug)
         args = ["defaults", "write"] + (["-f"] if force else [])
-        args += [domain, key, defaults._key_type(value), str(value)]
+        args += [domain, key, defaults.key_type(value), str(value)]
 
         defaults.write(domain, key, value, force)
         sh.spawn.assert_called_with(args, debug=debug)

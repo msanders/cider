@@ -79,14 +79,14 @@ class Defaults(object):
         force = force if force is not None else False
 
         args = ["defaults", "write"] + (["-f"] if force else [])
-        args += [domain, key, self._key_type(value), str(value)]
+        args += [domain, key, self.key_type(value), str(value)]
         return spawn(args, debug=self.debug)
 
     def delete(self, domain, key):
         return spawn(["defaults", "delete", domain, key], debug=self.debug)
 
     @staticmethod
-    def _key_type(value):
+    def key_type(value):
         key_types = {
             bool: "-bool",
             float: "-float",

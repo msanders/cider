@@ -12,33 +12,36 @@ class Brew(object):
         self.debug = debug if debug is not None else False
         self.verbose = verbose if verbose is not None else False
 
-    def _spawn(self, cmd, cmdargs, prompt=None, check_output=None):
+    def __spawn(self, cmd, cmdargs, prompt=None, check_output=None):
         check_output = check_output if check_output is not None else False
 
         args = ["brew"] + (["cask"] if self.cask else [])
         args += [cmd] + cmdargs
 
         # `brew ls` doesn't seem to like these flags.
-        if cmd != "ls" or self.cask:
+        if cmd != "ls":
             args += (["--debug"] if self.debug else [])
             args += (["--verbose"] if self.verbose else [])
 
         try:
             return spawn(args, debug=self.debug, check_output=check_output)
         except CalledProcessError as e:
-            if not prompt or click.confirm(prompt):
+            if not prompt or not click.confirm(prompt):
                 raise e
+
+    def __assert_no_cask(self, cmd):
+        assert not self.cask, "no such command: `brew cask {0}`".format(cmd)
 
     def safe_install(self, formula):
         prompt = "Failed to install {0}. Continue? [y/N]".format(formula)
-        return self._spawn("install", [formula], prompt)
+        return self.__spawn("install", [formula], prompt)
 
     def install(self, *formulas, **kwargs):
         formulas = list(formulas) or []
         force = kwargs.get("force", False)
 
         args = formulas + (["--force"] if force else [])
-        return self._spawn("install", args)
+        return self.__spawn("install", args)
 
     def rm(self, *formulas, **kwargs):
         formulas = list(formulas) or []
@@ -46,20 +49,26 @@ class Brew(object):
 
         args = formulas + (["--force"] if force else [])
         cmd = "rm" if not self.cask else "zap"
-        return self._spawn(cmd, args)
+        return self.__spawn(cmd, args)
 
     def tap(self, tap):
-        return self._spawn("tap", [tap] if tap is not None else [])
+        self.__assert_no_cask(__name__)
+        return self.__spawn("tap", [tap] if tap is not None else [])
 
     def untap(self, tap):
-        return self._spawn("untap", [tap])
+        self.__assert_no_cask(__name__)
+        return self.__spawn("untap", [tap])
 
     def ls(self):
-        return self._spawn("ls", ["-1"], check_output=True).strip().split("\n")
+        return self.__spawn(
+            "ls", ["-1"], check_output=True
+        ).strip().split("\n")
 
     def uses(self, formula):
         args = ["--installed", "--recursive", formula]
-        return self._spawn("uses", args, check_output=True).strip().split("\n")
+        return self.__spawn(
+            "uses", args, check_output=True
+        ).strip().split("\n")
 
 
 class Defaults(object):
@@ -69,23 +78,25 @@ class Defaults(object):
     def write(self, domain, key, value, force=None):
         force = force if force is not None else False
 
+        args = ["defaults", "write"] + (["-f"] if force else [])
+        args += [domain, key, self._key_type(value), str(value)]
+        return spawn(args, debug=self.debug)
+
+    def delete(self, domain, key):
+        return spawn(["defaults", "delete", domain, key], debug=self.debug)
+
+    @staticmethod
+    def _key_type(value):
         key_types = {
             bool: "-bool",
             float: "-float",
             int: "-int"
         }
 
-        key_type = next(
+        return next(
             (k for t, k in key_types.items() if isinstance(value, t)),
             "-string"
         )
-
-        args = ["defaults", "write"] + (["-f"] if force else [])
-        args += [domain, key, key_type, str(value)]
-        return spawn(args, debug=self.debug)
-
-    def delete(self, domain, key):
-        return spawn(["defaults", "delete", domain, key], debug=self.debug)
 
 
 def spawn(args, **kwargs):
@@ -93,9 +104,9 @@ def spawn(args, **kwargs):
     check_output = kwargs.get("check_output", False)
     debug = kwargs.get("debug", False)
 
-    custom_params = ["check_call", "check_output", "debug"]
+    kwarg_params = ["check_call", "check_output", "debug"]
     params = dict((k, v) for (k, v) in kwargs.items()
-                  if k not in custom_params)
+                  if k not in kwarg_params)
 
     tty.putdebug(" ".join(args), debug)
 

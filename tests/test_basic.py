@@ -2,10 +2,11 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from cider import Cider
 from mock import MagicMock
+from pytest import list_of
 import pytest
 
 
-@pytest.mark.randomize(formulas=[str], cask=bool, force=bool)
+@pytest.mark.randomize(formulas=list_of(str), cask=bool, force=bool)
 def test_install(tmpdir, formulas, cask, force):
     cider = Cider(cider_dir=str(tmpdir), cask=cask)
     cider.brew = MagicMock()
@@ -17,7 +18,7 @@ def test_install(tmpdir, formulas, cask, force):
         assert formula in cider.read_bootstrap().get(key, [])
 
 
-@pytest.mark.randomize(formulas=[str], cask=bool)
+@pytest.mark.randomize(formulas=list_of(str), cask=bool)
 def test_rm(tmpdir, formulas, cask):
     cider = Cider(cider_dir=str(tmpdir), cask=cask)
     cider.brew = MagicMock()

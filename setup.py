@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from distutils.core import Extension
 
 ext = Extension(
-    "_osx",
+    "cider._osx",
     sources=["cider/_osx.m"],
     language="objc",
     extra_link_args=[

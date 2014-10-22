@@ -1,5 +1,6 @@
 inherits:
-    - strictness_high
+    - strictness_medium
+    - full_pep8
 
 pylint:
   disable:
@@ -9,3 +10,8 @@ pylint:
     - W0621
   options:
     generated-members: __globals__
+    ignored-modules: pytest
+
+pep8:
+  options:
+    max-line-length: 79

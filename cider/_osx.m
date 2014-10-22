@@ -114,7 +114,28 @@ static PyMethodDef osx_methods[] = {
     {NULL, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
+
+static struct PyModuleDef osxdef = {
+    PyModuleDef_HEAD_INIT,
+    "_osx",
+    NULL,
+    0,
+    osx_methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+PyObject *PyInit__osx(void)
+#else
 void init_osx(void)
+#endif
 {
+#if PY_MAJOR_VERSION >= 3
+    return PyModule_Create(&osxdef);
+#else
     Py_InitModule("_osx", osx_methods);
+#endif
 }

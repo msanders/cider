@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
-from cider import Cider
+from __future__ import absolute_import, print_function, unicode_literals
+from . import _tty as tty
+from . import core as cider
+from .core import Cider
 from subprocess import CalledProcessError
 from webbrowser import open as urlopen
-import _tty as tty
-import cider
 import click
 import sys
 
@@ -87,7 +87,7 @@ def cask(ctx, command, arg, force=None, verbose=None, debug=None):
         "verbose": verbose,
         "debug": debug
     }
-    kwargs = {k: v for k, v in kwargs.iteritems() if k in args}
+    kwargs = {k: v for k, v in kwargs.items() if k in args}
 
     func = func_by_cmd.get(cmd)
     if func:

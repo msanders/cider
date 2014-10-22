@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 from rfc3987 import parse as urlparse
 from tempfile import mkdtemp
-from _sh import Brew, Defaults, spawn
-import _osx as osx
-import _tty as tty
+from ._sh import Brew, Defaults, spawn
+from . import _tty as tty
+from . import _osx as osx
 import copy
 import errno
 import glob
@@ -135,7 +135,10 @@ class Cider(object):
         for target in targets:
             if os.path.islink(target) and os.path.samefile(
                 self.cider_dir,
-                os.path.commonprefix([self.cider_dir, os.path.realpath(target)]),
+                os.path.commonprefix([
+                    self.cider_dir,
+                    os.path.realpath(target)
+                ]),
             ):
                 os.remove(target)
                 print(tty.progress("Removed dead symlink: {0}".format(
@@ -178,12 +181,12 @@ class Cider(object):
             if formula in dependencies:
                 deps = dependencies[formula]
                 deps = deps if isinstance(deps, list) else [deps]
-                deps = (
-                    # Currently only cask dependencies are supported.
-                    dep.split("/")[1] for dep in deps if dep.startswith("cask/")
-                )
 
-                for cask in deps:
+                # Currently only cask dependencies are supported.
+                deps = (dep for dep in deps if dep.startswith("cask/"))
+
+                for dep in (deps):
+                    cask = dep.split("/")[1]
                     Brew(cask=True).safe_install(cask)
                     del casks[casks.index(cask)]
 
@@ -215,10 +218,9 @@ class Cider(object):
             ):
                 tty.puts("Added {0} to bootstrap".format(formula))
             else:
-                tty.puterr(
-                    "{0} already bootstrapped; skipping install".format(formula),
-                    warning=True
-                )
+                tty.puterr("{0} already bootstrapped; skipping install".format(
+                    formula
+                ), warning=True)
 
     def rm(self, *formulas):
         def transform(formula):
@@ -263,9 +265,10 @@ class Cider(object):
         previous_targets = _read_json(self.symlink_targets_file, [])
         new_targets = []
 
-        for source_glob, target in symlinks.iteritems():
+        for source_glob, target in symlinks.items():
             _mkdir_p(os.path.dirname(os.path.expanduser(target)))
-            for source in glob.iglob(os.path.join(self.symlink_dir, source_glob)):
+            sources = glob.iglob(os.path.join(self.symlink_dir, source_glob))
+            for source in sources:
                 source = os.path.join(self.cider_dir, source)
                 source_target = os.path.expanduser(target)
                 if target.endswith(os.path.sep) or target == "~":
@@ -359,7 +362,7 @@ class Cider(object):
         defaults = self.read_defaults()
         for domain in defaults:
             options = defaults[domain]
-            for key, value in options.iteritems():
+            for key, value in options.items():
                 self.defaults.write(domain, key, value)
 
         tty.puts("Applied defaults")
@@ -396,7 +399,7 @@ class Cider(object):
     def apply_icons(self):
         bootstrap = _read_json(self.bootstrap_file)
         icons = bootstrap.get("icons", {})
-        for app, icon in icons.iteritems():
+        for app, icon in icons.items():
             _apply_icon(app, icon)
 
         tty.puts("Applied icons")

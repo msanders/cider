@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 from subprocess import CalledProcessError
-import _tty as tty
+from . import _tty as tty
 import subprocess
 import click
 
@@ -76,7 +76,7 @@ class Defaults(object):
         }
 
         key_type = next(
-            (k for t, k in key_types.iteritems() if isinstance(value, t)),
+            (k for t, k in key_types.items() if isinstance(value, t)),
             "-string"
         )
 
@@ -94,7 +94,7 @@ def spawn(args, **kwargs):
     debug = kwargs.get("debug", False)
 
     custom_params = ["check_call", "check_output", "debug"]
-    params = dict((k, v) for (k, v) in kwargs.iteritems()
+    params = dict((k, v) for (k, v) in kwargs.items()
                   if k not in custom_params)
 
     tty.putdebug(" ".join(args), debug)

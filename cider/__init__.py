@@ -1,1 +1,1 @@
-from cider.core import *
+from .core import *

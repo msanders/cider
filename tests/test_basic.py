@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, print_function, unicode_literals
 from cider import Cider
-from mock import MagicMock, call
+from mock import MagicMock
 import pytest
-import random
 
 
 @pytest.mark.randomize(formulas=[str], cask=bool, force=bool)
@@ -96,5 +97,5 @@ def _assert_roughly_called_with(mock_self, *args, **kwargs):
     for actual, expected in zip(actual_args, args):
         assert_roughly_equal(actual, expected)
 
-    for key, expected in kwargs.iteritems():
+    for key, expected in kwargs.items():
         assert_roughly_equal(actual_kwargs.get(key), expected)

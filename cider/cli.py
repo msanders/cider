@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 from . import _tty as tty
-from . import core as cider
 from .core import Cider
 from subprocess import CalledProcessError
 from webbrowser import open as urlopen
 import click
 import sys
+
+from .core import (
+    BrewMissingError, CiderException, JSONError, XcodeMissingError
+)
 
 
 class CLI(click.Group):
@@ -20,7 +23,7 @@ class CLI(click.Group):
         rows = [
             "{0} [cask] install FORMULA...",
             "{0} [cask] rm FORMULA...",
-            "{0} [cask] list",
+            "{0} [cask] list [FORMULA]",
             "{0} [cask] missing",
             "{0} set-default [-g] NAME KEY VALUE",
             "{0} remove-default [-g] NAME KEY",
@@ -37,150 +40,109 @@ class CLI(click.Group):
         with formatter.section('Example usage'):
             formatter.write_dl((row.format(basename), '') for row in rows)
 
-    def get_command(self, ctx, cmd_name):
+    def get_command(self, ctx, command):
         aliases = {
             "delete": "remove-default",
             "ls": "list",
             "write": "set-default"
         }
 
-        cmd_name = aliases.get(cmd_name, cmd_name)
-        return click.Group.get_command(self, ctx, cmd_name)
+        command = aliases.get(command, command)
+        return click.Group.get_command(self, ctx, command)
 
 
-@click.command(cls=CLI)
-def cli():
-    pass
+@click.group(cls=CLI)
+@click.option("-d", "--debug", is_flag=True)
+@click.option("-v", "--verbose", is_flag=True)
+@click.pass_context
+def cli(ctx, debug, verbose):
+    ctx.obj = Cider(False, debug, verbose)
 
 
 @cli.command()
 @click.argument("command")
-@click.argument("arg", required=False, nargs=-1)
+@click.argument("formula", required=False, nargs=-1)
 @click.option("-f", "--force", is_flag=True)
-@click.option("-d", "--debug", is_flag=True)
-@click.option("-v", "--verbose", is_flag=True)
 @click.pass_context
-def cask(ctx, command, arg, force=None, verbose=None, debug=None):
-    func_by_cmd = {
-        "install": cask_install,
-        "rm": cask_rm,
-        "missing": cask_missing,
-        "list": cask_list
-    }
-
-    aliases = {
-        "ls": "list",
-    }
-
+def cask(ctx, command, formula, force=None):
+    supported_commands = set(("install", "rm", "missing", "list"))
+    aliases = { "ls": "list" }
     args_by_cmd = {
-        "install": ["formula", "force", "verbose", "debug"],
-        "rm": ["formula", "verbose", "debug"],
-        "missing": ["debug"],
-        "list": []
+        "install": ["formula", "force"],
+        "rm": ["formula"]
     }
 
-    cmd = aliases.get(command, command)
-    args = args_by_cmd.get(cmd, [])
     kwargs = {
-        "formula": arg,
-        "force": force,
-        "verbose": verbose,
-        "debug": debug
+        "formula": formula,
+        "force": force
     }
-    kwargs = {k: v for k, v in kwargs.items() if k in args}
 
-    func = func_by_cmd.get(cmd)
-    if func:
-        ctx.invoke(func, **kwargs)
+    command = aliases.get(command, command)
+
+    if command in supported_commands:
+        supported_args = args_by_cmd.get(command, [])
+        kwargs = {k: v for k, v in kwargs.items() if k in supported_args}
+        cmd = cli.commands.get(command)
+        ctx.obj = Cider(True, ctx.obj.debug, ctx.obj.verbose)
+        ctx.invoke(cmd, **kwargs)
     else:
-        raise click.ClickException("No such command \"{0}\"".format(cmd))
+        raise click.ClickException("No such command \"{0}\"".format(command))
 
 
 @cli.command()
-@click.option("-d", "--debug", is_flag=True)
-def restore(debug=None):
-    Cider(debug).restore()
+@click.pass_obj
+def restore(cider):
+    cider.restore()
 
 
 @cli.command()
-@click.option("-d", "--debug", is_flag=True)
-@click.option("-v", "--verbose", is_flag=True)
+@click.argument("formula", nargs=-1, required=True)
 @click.option("-f", "--force", is_flag=True)
-@click.argument("formula", nargs=-1, required=True)
-def install(formula, debug=None, verbose=None, force=None):
-    Cider(debug, verbose).install(force=force, *formula)
+@click.pass_obj
+def install(cider, formula, force=None):
+    click.echo("GOT TO INSTALL")
+    cider.install(*formula, force=force)
 
 
 @cli.command()
-@click.option("-d", "--debug", is_flag=True)
-@click.option("-v", "--verbose", is_flag=True)
 @click.argument("formula", nargs=-1, required=True)
-def rm(formula, debug=None, verbose=None):
-    Cider(debug, verbose).rm(*formula)
+@click.pass_obj
+def rm(cider, formula):
+    cider.rm(*formula)
 
 
 @cli.command()
-@click.option("-d", "--debug", is_flag=True)
-@click.option("-v", "--verbose", is_flag=True)
 @click.argument("tap", required=False)
-def tap(tap, debug=None, verbose=None):
-    Cider(debug, verbose).tap(tap)
+@click.pass_obj
+def tap(cider, tap):
+    cider.tap(tap)
 
 
 @cli.command()
-@click.option("-d", "--debug", is_flag=True)
-@click.option("-v", "--verbose", is_flag=True)
 @click.argument("tap")
-def untap(tap, debug=None, verbose=None):
-    Cider(debug, verbose).untap(tap)
+@click.pass_obj
+def untap(cider, tap):
+    cider.untap(tap)
 
 
 @cli.command()
-@click.option("-d", "--debug", is_flag=True)
 @click.option("-f", "--force", is_flag=True)
-def relink(debug=None, force=None):
-    Cider(debug).relink(force=force)
+@click.pass_obj
+def relink(cider, force=None):
+    cider.relink(force)
 
 
 @cli.command("list")
 @click.argument("formula", required=False)
-def ls(formula):
-    Cider().ls(formula)
+@click.pass_obj
+def ls(cider, formula):
+    cider.ls(formula)
 
 
 @cli.command()
-@click.option("-d", "--debug", is_flag=True)
-def missing(debug=None):
-    Cider(debug).list_missing()
-
-
-@cli.command("cask install")
-@click.option("-d", "--debug", is_flag=True)
-@click.option("-v", "--verbose", is_flag=True)
-@click.option("-f", "--force", is_flag=True)
-@click.argument("formula", nargs=-1, required=True)
-def cask_install(formula, force=None, debug=None, verbose=None):
-    Cider(True, debug, verbose).install(*formula, force=force)
-
-
-@cli.command("cask rm")
-@click.option("-v", "--verbose", is_flag=True)
-@click.option("-d", "--debug", is_flag=True)
-@click.argument("formula", nargs=-1, required=True)
-def cask_rm(formula, debug=None, verbose=None):
-    Cider(True, debug, verbose).rm(*formula)
-
-
-@cli.command("cask list")
-@click.argument("formula", required=False)
-def cask_list(formula):
-    Cider(cask=True).ls(formula)
-
-
-@cli.command("cask missing")
-@click.option("-d", "--debug", is_flag=True)
-def cask_missing(debug=None):
-    Cider(True, debug).list_missing()
+@click.pass_obj
+def missing(cider):
+    cider.list_missing()
 
 
 @cli.command("set-default")
@@ -189,15 +151,15 @@ def cask_missing(debug=None):
 @click.argument("value")
 @click.option("-g", "--globalDomain", is_flag=True)
 @click.option("-f", "--force", is_flag=True)
-@click.option("-d", "--debug", is_flag=True)
 @click.option("-int", is_flag=True, expose_value=False)
 @click.option("-float", is_flag=True, expose_value=False)
 @click.option("-string", is_flag=True, expose_value=False)
 @click.option("-bool", is_flag=True, expose_value=False)
-def set_default(name, key, value, globaldomain=None, force=None, debug=None):
+@click.pass_obj
+def set_default(cider, name, key, value, globaldomain=None, force=None):
     if globaldomain:
         name, key, value = "NSGlobalDomain", name, key
-    Cider(debug).set_default(
+    cider.set_default(
         name,
         key,
         value,
@@ -207,43 +169,46 @@ def set_default(name, key, value, globaldomain=None, force=None, debug=None):
 
 @cli.command("remove-default")
 @click.option("-g", "--globalDomain", is_flag=True)
-@click.option("-d", "--debug", is_flag=True)
 @click.argument("name")
 @click.argument("key", required=False)
-def remove_default(name, key, globaldomain=None):
+@click.pass_obj
+def remove_default(cider, name, key, globaldomain=None):
     if globaldomain:
         name, key = "NSGlobalDomain", name
-    Cider().remove_default(name, key)
+    cider.remove_default(name, key)
 
 
 @cli.command("apply-defaults")
-@click.option("-d", "--debug", is_flag=True)
-def apply_defaults(debug=None):
-    Cider(debug).apply_defaults()
+@click.pass_obj
+def apply_defaults(cider):
+    cider.apply_defaults()
 
 
 @cli.command("set-icon")
 @click.argument("app")
 @click.argument("icon")
-def set_icon(app, icon):
-    Cider().set_icon(app, icon)
+@click.pass_obj
+def set_icon(cider, app, icon):
+    cider.set_icon(app, icon)
 
 
 @cli.command("remove-icon")
 @click.argument("app")
-def remove_icon(app):
-    Cider().remove_icon(app)
+@click.pass_obj
+def remove_icon(cider, app):
+    cider.remove_icon(app)
 
 
 @cli.command("apply-icons")
-def apply_icons():
-    Cider().apply_icons()
+@click.pass_obj
+def apply_icons(cider):
+    cider.apply_icons()
 
 
 @cli.command("run-scripts")
-@click.option("-d", "--debug", is_flag=True)
-def run_scripts(debug=None):
-    Cider(debug).run_scripts()
+@click.pass_obj
+def run_scripts(cider):
+    cider.run_scripts()
 
 
 def main():
@@ -254,22 +219,22 @@ def main():
             " ".join(e.cmd),
             e.returncode
         ))
-    except cider.JSONError as e:
+    except JSONError as e:
         tty.puterr("Error reading JSON at {0}: {1}".format(
             e.filepath,
             e.message
         ))
-    except cider.XcodeMissingError as e:
+    except XcodeMissingError as e:
         print("First, you need to install Xcode (press any key to redirect)")
         click.getchar()
         urlopen(e.url)
         sys.exit(1)
-    except cider.BrewMissingError as e:
+    except BrewMissingError as e:
         print("Next, install Homebrew (press any key to redirect)")
         click.getchar()
         urlopen(e.url)
         sys.exit(1)
-    except (cider.CiderException, click.ClickException) as e:
+    except (CiderException, click.ClickException) as e:
         tty.puterr(e.message, prefix="Error:")
         sys.exit(e.exit_code)
     except click.Abort:

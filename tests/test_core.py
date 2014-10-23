@@ -15,7 +15,7 @@ except ImportError:
 class TestCider(object):
     @pytest.mark.randomize(formulas=list_of(str), force=bool)
     def test_install(self, tmpdir, cask, formulas, force):
-        cider = Cider(cask, str(tmpdir))
+        cider = Cider(cask, cider_dir=str(tmpdir))
         cider.brew = MagicMock()
 
         cider.install(*formulas, force=force)
@@ -26,7 +26,7 @@ class TestCider(object):
 
     @pytest.mark.randomize(formulas=list_of(str))
     def test_rm(self, tmpdir, cask, formulas):
-        cider = Cider(cask, str(tmpdir))
+        cider = Cider(cask, cider_dir=str(tmpdir))
         cider.brew = MagicMock()
 
         cider.rm(*formulas)
@@ -47,7 +47,7 @@ class TestCider(object):
                 "false": False
             }.get(value, value)
 
-        cider = Cider(cask, str(tmpdir))
+        cider = Cider(cask, cider_dir=str(tmpdir))
         cider.defaults = MagicMock()
 
         for value in values:
@@ -71,7 +71,7 @@ class TestCider(object):
 
     @pytest.mark.randomize(domain=str, key=str)
     def test_remove_default(self, tmpdir, cask, domain, key):
-        cider = Cider(cask, str(tmpdir))
+        cider = Cider(cask, cider_dir=str(tmpdir))
         cider.defaults = MagicMock()
         cider.remove_default(domain, key)
         cider.defaults.delete.assert_called_with(domain, key)
@@ -79,7 +79,7 @@ class TestCider(object):
 
     @pytest.mark.randomize(tap=str)
     def test_tap(self, tmpdir, cask, tap):
-        cider = Cider(cask, str(tmpdir))
+        cider = Cider(cask, cider_dir=str(tmpdir))
         cider.brew = MagicMock()
         cider.tap(tap)
         cider.brew.tap.assert_called_with(tap)
@@ -87,7 +87,7 @@ class TestCider(object):
 
     @pytest.mark.randomize(tap=str)
     def test_untap(self, tmpdir, cask, tap):
-        cider = Cider(cask, str(tmpdir))
+        cider = Cider(cask, cider_dir=str(tmpdir))
         cider.brew = MagicMock()
         cider.untap(tap)
         cider.brew.untap.assert_called_with(tap)

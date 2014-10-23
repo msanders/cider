@@ -185,19 +185,20 @@ def test_curl(url, path):
         sh.spawn.assert_called_with(args)
 
 
-@pytest.mark.randomize(path=str, fname=str)
+@pytest.mark.randomize(path=str, fname=str, fixed_length=10)
 def test_mkdir_p(tmpdir, path, fname):
     # Shouldn't raise an exception when directory already exists.
     sh.mkdir_p(str(tmpdir.join(path)))
     sh.mkdir_p(str(tmpdir.join(path)))
 
     # Should raise one when a file does.
+    os.rmdir(str(tmpdir.join(path)))
     _touch(str(tmpdir.join(fname)))
+
     with pytest.raises(OSError):
         sh.mkdir_p(str(tmpdir.join(fname)))
 
     # Teardown
-    os.rmdir(str(tmpdir.join(path)))
     os.remove(str(tmpdir.join(fname)))
 
 

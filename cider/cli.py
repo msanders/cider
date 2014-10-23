@@ -61,19 +61,21 @@ def cli(ctx, debug, verbose):
 
 @cli.command()
 @click.argument("command")
-@click.argument("formula", required=False, nargs=-1)
+@click.argument("args", required=False, nargs=-1)
 @click.option("-f", "--force", is_flag=True)
 @click.pass_context
-def cask(ctx, command, formula, force=None):
+def cask(ctx, command, args, force=None):
     supported_commands = set(("install", "rm", "missing", "list"))
-    aliases = { "ls": "list" }
+    aliases = {"ls": "list"}
     args_by_cmd = {
-        "install": ["formula", "force"],
-        "rm": ["formula"]
+        "install": ["formulas", "force"],
+        "list": ["formula"],
+        "rm": ["formulas"]
     }
 
     kwargs = {
-        "formula": formula,
+        "formula": args[0] if args else None,
+        "formulas": args,
         "force": force
     }
 
@@ -96,19 +98,18 @@ def restore(cider):
 
 
 @cli.command()
-@click.argument("formula", nargs=-1, required=True)
+@click.argument("formulas", nargs=-1, required=True)
 @click.option("-f", "--force", is_flag=True)
 @click.pass_obj
-def install(cider, formula, force=None):
-    click.echo("GOT TO INSTALL")
-    cider.install(*formula, force=force)
+def install(cider, formulas, force=None):
+    cider.install(*formulas, force=force)
 
 
 @cli.command()
-@click.argument("formula", nargs=-1, required=True)
+@click.argument("formulas", nargs=-1, required=True)
 @click.pass_obj
-def rm(cider, formula):
-    cider.rm(*formula)
+def rm(cider, formulas):
+    cider.rm(*formulas)
 
 
 @cli.command()

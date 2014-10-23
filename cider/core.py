@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
+from . import _osx as osx
+from . import _tty as tty
+from ._sh import Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p
 from rfc3987 import parse as urlparse
 from tempfile import mkdtemp
-from ._sh import Brew, Defaults, spawn
-from . import _tty as tty
-from . import _osx as osx
 import copy
 import errno
 import glob
 import json
 import os
 import platform
-import pwd
 import re
 import subprocess
 import sys
@@ -101,15 +100,18 @@ class Cider(object):
         return os.path.join(self.cache_dir, "symlink_targets.json")
 
     def read_bootstrap(self):
-        if not os.path.isfile(self.bootstrap_file):
-            raise BootstrapMissingError(
-                "Bootstrap file not found. Expected at {0}".format(
-                    _collapseuser(self.bootstrap_file)
-                ),
-                self.bootstrap_file
-            )
+        try:
+            return _read_json(self.bootstrap_file)
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                raise BootstrapMissingError(
+                    "Bootstrap file not found. Expected at {0}".format(
+                        collapseuser(self.bootstrap_file)
+                    ),
+                    self.bootstrap_file
+                )
 
-        return _read_json(self.bootstrap_file)
+            raise e
 
     def read_defaults(self):
         return _read_json(self.defaults_file, {})
@@ -135,14 +137,14 @@ class Cider(object):
         for target in targets:
             if os.path.islink(target) and os.path.samefile(
                 self.cider_dir,
-                os.path.commonprefix([
+                commonpath([
                     self.cider_dir,
                     os.path.realpath(target)
                 ]),
             ):
                 os.remove(target)
                 print(tty.progress("Removed dead symlink: {0}".format(
-                    _collapseuser(target))
+                    collapseuser(target))
                 ))
 
     def restore(self):
@@ -266,7 +268,7 @@ class Cider(object):
         new_targets = []
 
         for source_glob, target in symlinks.items():
-            _mkdir_p(os.path.dirname(os.path.expanduser(target)))
+            mkdir_p(os.path.dirname(os.path.expanduser(target)))
             sources = glob.iglob(os.path.join(self.symlink_dir, source_glob))
             for source in sources:
                 source = os.path.join(self.cider_dir, source)
@@ -281,7 +283,7 @@ class Cider(object):
                 new_targets.append(source_target)
 
         self._remove_dead_targets(set(previous_targets) - set(new_targets))
-        _mkdir_p(os.path.dirname(self.symlink_targets_file))
+        mkdir_p(os.path.dirname(self.symlink_targets_file))
         _write_json(self.symlink_targets_file, sorted(new_targets))
 
     def installed(self):
@@ -405,48 +407,31 @@ class Cider(object):
         tty.puts("Applied icons")
 
 
-def _curl(url, path):
-    return spawn(["curl", url, "-o", path, "--progress-bar"])
-
-
-def _mkdir_p(pathname):
-    try:
-        os.makedirs(pathname)
-    except OSError as e:
-        if e.errno != errno.EEXIST or not os.path.isdir(pathname):
-            raise
-
-
-def _touch(fname, times=None):
-    with open(fname, 'a'):
-        os.utime(fname, times)
-
-
 def _read_json(path, fallback=None):
     try:
         with open(path, "r") as f:
-            return json.loads(f.read())
-    except JSONDecodeError as e:
-        raise JSONError(e, path)
+            return json.load(f)
     except IOError as e:
         if fallback is not None and e.errno == errno.ENOENT:
             return fallback
 
         raise e
+    except JSONDecodeError as e:
+        raise JSONError(e, path)
 
 
 def _modify_json(path, transform):
     try:
         f = open(path, "r+")
-        contents = json.loads(f.read())
-    except JSONDecodeError as e:
-        raise JSONError(e, path)
+        contents = json.load(f)
     except IOError as e:
         if e.errno == errno.ENOENT:
-            f = open(path, "w+")
+            f = open(path, "w")
             contents = {}
         else:
             raise e
+    except JSONDecodeError as e:
+        raise JSONError(e, path)
 
     old_contents = contents
     contents = transform(copy.deepcopy(contents))
@@ -476,20 +461,13 @@ def _write_json(path, contents):
         ))
 
 
-def _collapseuser(path):
-    home_dir = os.environ.get("HOME", pwd.getpwuid(os.getuid()).pw_dir)
-    if os.path.samefile(home_dir, os.path.commonprefix([path, home_dir])):
-        return os.path.join("~", os.path.relpath(path, home_dir))
-    return path
-
-
 def _make_symlink(source, target, debug=None, force=None):
     linked = False
 
     if not os.path.exists(source):
         raise SymlinkError(
             "symlink source \"{0}\" does not exist".format(
-                _collapseuser(source)
+                collapseuser(source)
             )
         )
 
@@ -497,8 +475,8 @@ def _make_symlink(source, target, debug=None, force=None):
         os.symlink(source, target)
         linked = True
         tty.puts("symlinked {0} -> {1}".format(
-            tty.color(_collapseuser(target), tty.MAGENTA),
-            _collapseuser(source)
+            tty.color(collapseuser(target), tty.MAGENTA),
+            collapseuser(source)
         ))
     except OSError as e:
         if e.errno != errno.EEXIST:
@@ -511,20 +489,20 @@ def _make_symlink(source, target, debug=None, force=None):
             ):
                 linked = True
                 tty.putdebug("Already linked: {0} -> {1}".format(
-                    tty.color(_collapseuser(target), tty.MAGENTA),
-                    _collapseuser(source)
+                    tty.color(collapseuser(target), tty.MAGENTA),
+                    collapseuser(source)
                 ), debug)
             else:
                 fmt = "Linked to wrong target: {0} -> {1} (instead of {2})"
                 tty.puterr(fmt.format(
                     tty.color(target, tty.MAGENTA),
-                    os.path.realpath(_collapseuser(target)),
-                    os.path.realpath(_collapseuser(source))
+                    os.path.realpath(collapseuser(target)),
+                    os.path.realpath(collapseuser(source))
                 ), warning=force)
         else:
             tty.puterr("{0} symlink target already exists at: {1}".format(
-                _collapseuser(source),
-                _collapseuser(target)
+                collapseuser(source),
+                collapseuser(target)
             ), warning=force)
 
     if not linked and force:
@@ -549,7 +527,7 @@ def _apply_icon(app, icon):
         tmpdir = mkdtemp()
         icon_path = os.path.join(tmpdir, os.path.basename(components["path"]))
         print(tty.progress("Downloading {0} icon: {1}".format(app, icon)))
-        _curl(icon, icon_path)
+        curl(icon, icon_path)
     except ValueError:
         icon_path = icon
 

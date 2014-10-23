@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
-from subprocess import CalledProcessError
 from . import _tty as tty
-import subprocess
+from subprocess import CalledProcessError
 import click
+import errno
+import os
+import pwd
+import subprocess
 
 
 class Brew(object):
@@ -116,3 +119,35 @@ def spawn(args, **kwargs):
         return subprocess.check_call(args, **params)
     else:
         return subprocess.call(args, **params)
+
+
+def curl(url, path):
+    return spawn(["curl", url, "-o", path, "--progress-bar"])
+
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno != errno.EEXIST or not os.path.isdir(path):
+            raise
+
+
+def touch(fname, times=None):
+    with open(fname, 'a'):
+        os.utime(fname, times)
+
+
+def collapseuser(path):
+    home_dir = os.environ.get("HOME", pwd.getpwuid(os.getuid()).pw_dir)
+    if os.path.samefile(home_dir, commonpath([path, home_dir])):
+        return os.path.join("~", os.path.relpath(path, home_dir))
+    return path
+
+
+# os.path.commonprefix doesn't behave as you'd expect - see
+# https://stackoverflow.com/a/21499568/176049
+def commonpath(paths):
+    paths = (os.path.dirname(p) if not os.path.isdir(p) else p for p in paths)
+    norm_paths = [os.path.abspath(p) + os.path.sep for p in paths]
+    return os.path.dirname(os.path.commonprefix(norm_paths))

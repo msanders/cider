@@ -8,16 +8,18 @@ from subprocess import CalledProcessError
 import pytest
 import random
 import subprocess
+import os
 
 try:
     from contextlib import nested as empty
-    from mock import MagicMock
+    from mock import MagicMock, patch
 except ImportError:
     from contextlib import ExitStack as empty  # noqa pylint: disable=E0611
-    from unittest.mock import MagicMock  # pylint: disable=F0401,E0611
+    from unittest.mock import MagicMock, patch  # pylint: disable=F0401,E0611
 
 
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
+@patch("cider._sh.click.confirm", MagicMock(return_value=True))
 class TestBrew(object):
     patcher = Patcher()
 
@@ -105,10 +107,12 @@ class TestBrew(object):
         sh.spawn.assert_called_with(args, debug=debug, check_output=True)
         sh.spawn.return_value = old_return
 
-    def __cmd(self, cask=None):
+    @staticmethod
+    def __cmd(cask=None):
         return ["brew"] + (["cask"] if cask else [])
 
-    def __flags(self, debug, verbose):
+    @staticmethod
+    def __flags(debug, verbose):
         return ((["--debug"] if debug else []) +
                 (["--verbose"] if verbose else []))
 
@@ -154,7 +158,7 @@ def test_spawn(args, check_call, check_output, debug):
         (subprocess, "call")
     ]
 
-    with Patcher(patches):
+    with Patcher(*patches):
         if check_output:
             expected_mock = subprocess.check_output = MagicMock()
         elif check_call:
@@ -171,6 +175,70 @@ def test_spawn(args, check_call, check_output, debug):
         assert actual_return_value == expected_mock.return_value
 
 
+@pytest.mark.randomize(url=str, path=str)
+def test_curl(url, path):
+    with Patcher((sh, "spawn")):
+        sh.spawn = MagicMock(return_value=0)
+        args = ["curl", url, "-o", path, "--progress-bar"]
+
+        sh.curl(url, path)
+        sh.spawn.assert_called_with(args)
+
+
+@pytest.mark.randomize(path=str, fname=str)
+def test_mkdir_p(tmpdir, path, fname):
+    # Shouldn't raise an exception when directory already exists.
+    sh.mkdir_p(str(tmpdir.join(path)))
+    sh.mkdir_p(str(tmpdir.join(path)))
+
+    # Should raise one when a file does.
+    _touch(str(tmpdir.join(fname)))
+    with pytest.raises(OSError):
+        sh.mkdir_p(str(tmpdir.join(fname)))
+
+    # Teardown
+    os.rmdir(str(tmpdir.join(path)))
+    os.remove(str(tmpdir.join(fname)))
+
+
+@pytest.mark.randomize(path=str, home=str)
+def test_collapse_user(tmpdir, path, home):
+    homedir = str(tmpdir.join(home))
+    with patch.dict("os.environ", {"HOME": homedir}):
+        os.makedirs(homedir)
+        tmppath = str(tmpdir.join(path))
+        assert _samepath(tmppath, sh.collapseuser(tmppath))
+        assert _samepath(
+            os.path.join("~", path),
+            sh.collapseuser(os.path.expanduser(os.path.join(homedir, path)))
+        )
+
+    # Teardown
+    os.rmdir(homedir)
+
+
+@pytest.mark.randomize(path1=str, path2=str, bogusprefix=str)
+def test_commonpath(tmpdir, path1, path2, bogusprefix):
+    dir1 = str(tmpdir.join(path1))
+    dir2 = str(tmpdir.join(path2))
+
+    # os.path.commonprefix chokes on this check
+    bogusdir1 = str(tmpdir.join(bogusprefix + path1))
+    bogusdir2 = str(tmpdir.join(bogusprefix + path2))
+
+    assert _samepath(str(tmpdir), sh.commonpath([dir1, dir2]))
+    assert _samepath(str(tmpdir), sh.commonpath([bogusdir1, bogusdir2]))
+
+
+def _touch(fname):
+    with open(fname, "a"):
+        os.utime(fname, None)
+
+
+def _samepath(path1, path2):
+    return (os.path.normcase(os.path.normpath(path1)) ==
+            os.path.normcase(os.path.normpath(path2)))
+
+
 def setup_module():
     random.seed()
-    sh.click.confirm = MagicMock(return_value=True)

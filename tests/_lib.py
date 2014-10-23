@@ -7,7 +7,7 @@ notset = object()
 # This class allows us to safely patch objects without foregoing the static
 # analyzer complaints mock's monkeypatch causes (e.g. E1103).
 class Patcher(object):
-    def __init__(self, attrs=None):
+    def __init__(self, *attrs):
         attrs = [] if attrs is None else attrs
         self.__patched_attrs = []
         self.saveattrs(*attrs)

@@ -3,19 +3,22 @@ from __future__ import absolute_import, print_function, unicode_literals
 from ._lib import Patcher
 from cider import _sh as sh
 from cider._sh import Brew, Defaults
-from pytest import list_of
+from cider.exceptions import JSONError
+from pytest import list_of, dict_of
 from subprocess import CalledProcessError
+import errno
+import json
+import os
 import pytest
 import random
 import subprocess
-import os
 
 try:
     from contextlib import nested as empty
-    from mock import MagicMock, patch
+    from mock import MagicMock, mock_open, patch
 except ImportError:
     from contextlib import ExitStack as empty  # noqa pylint: disable=E0611
-    from unittest.mock import MagicMock, patch  # pylint: disable=F0401,E0611
+    from unittest.mock import MagicMock, mock_open, patch  # noqa pylint: disable=F0401,E0611
 
 
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
@@ -32,7 +35,7 @@ class TestBrew(object):
     def teardown_class(cls):
         cls.patcher.teardown()
 
-    @pytest.mark.randomize(formulas=list_of(str), force=bool)
+    @pytest.mark.randomize(formulas=list_of(str, min_items=1), force=bool)
     def test_install(self, cask, debug, verbose, formulas, force):
         brew = Brew(cask, debug, verbose)
         args = self.__cmd(cask)
@@ -42,7 +45,7 @@ class TestBrew(object):
         brew.install(*formulas, force=force)
         sh.spawn.assert_called_with(args, debug=debug, check_output=False)
 
-    @pytest.mark.randomize(formulas=list_of(str))
+    @pytest.mark.randomize(formulas=list_of(str, min_items=1))
     def test_rm(self, cask, debug, verbose, formulas):
         brew = Brew(cask, debug, verbose)
         args = self.__cmd(cask) + ["zap" if cask else "rm"] + formulas
@@ -149,7 +152,10 @@ class TestDefaults(object):
 
 
 @pytest.mark.randomize(
-    args=list_of(str), check_call=bool, check_output=bool, debug=bool
+    args=list_of(str, min_items=1),
+    check_call=bool,
+    check_output=bool,
+    debug=bool
 )
 def test_spawn(args, check_call, check_output, debug):
     patches = [
@@ -229,6 +235,72 @@ def test_commonpath(tmpdir, path1, path2, bogusprefix):
 
     assert _samepath(str(tmpdir), sh.commonpath([dir1, dir2]))
     assert _samepath(str(tmpdir), sh.commonpath([bogusdir1, bogusdir2]))
+
+
+@pytest.mark.parametrize("fallback", [None, {}, []])
+@pytest.mark.randomize(path=str, contents=dict_of(str, str))
+def test_read_json(path, contents, fallback):
+    def test_case(assertion, mock=None, read_data=None):
+        with patch("__builtin__.open", mock_open(mock, read_data)):
+            assert assertion()
+
+    test_case(
+        lambda: sh.read_json(path, fallback) == contents,
+        read_data=json.dumps(contents)
+    )
+
+    with pytest.raises(IOError) if fallback is None else empty():
+        test_case(
+            lambda: sh.read_json(path, fallback) == fallback,
+            MagicMock(side_effect=IOError(errno.ENOENT, ""))
+        )
+
+    with pytest.raises(JSONError):
+        test_case(
+            lambda: sh.read_json(path, fallback) is None,
+            read_data="garbage",
+        )
+
+
+@pytest.mark.randomize(path=str, contents=dict_of(str, str), fixed_length=10)
+def test_modify_json(tmpdir, path, contents):
+    fullpath = str(tmpdir.join(path))
+
+    def test_case(assertion, read_data=None):
+        if read_data is not None:
+            with open(fullpath, "w") as f:
+                f.write(read_data)
+
+        assert assertion()
+
+    def transform(x):
+        if not x:
+            return {"": random.getrandbits(100)}
+        x[random.choice(x.keys())] = random.getrandbits(100)
+        return x
+
+    # Should work when file is missing.
+    test_case(
+        lambda: sh.modify_json(fullpath, transform),
+        read_data=json.dumps(contents),
+    )
+
+    # ... and when it already exists.
+    test_case(lambda: sh.modify_json(fullpath, transform))
+    test_case(lambda: not sh.modify_json(fullpath, lambda x: x))
+
+    with pytest.raises(JSONError):
+        test_case(
+            lambda: sh.modify_json(fullpath, transform),
+            read_data="garbage",
+        )
+
+
+@pytest.mark.randomize(path=str, contents=dict_of(str, str))
+def test_write_json(tmpdir, path, contents):
+    fullpath = str(tmpdir.join(path))
+    sh.write_json(fullpath, contents)
+    assert sh.read_json(fullpath) == contents
 
 
 def _touch(fname):

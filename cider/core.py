@@ -2,10 +2,16 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from . import _osx as osx
 from . import _tty as tty
-from ._sh import Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p
+from .exceptions import (
+    UnsupportedOSError, XcodeMissingError, BrewMissingError,
+    BootstrapMissingError, SymlinkError, AppMissingError
+)
+from ._sh import (
+    Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p, read_json,
+    write_json, modify_json
+)
 from rfc3987 import parse as urlparse
 from tempfile import mkdtemp
-import copy
 import errno
 import glob
 import json
@@ -15,56 +21,8 @@ import re
 import subprocess
 import sys
 
-JSONDecodeError = ValueError
-
-_DEFAULTS_TRUE_RE = re.compile(r"\bY(ES)?\b", re.I)
-_DEFAULTS_FALSE_RE = re.compile(r"\bN(O)?\b", re.I)
-
-
-class CiderException(Exception):
-    def __init__(self, message, exit_code=None):
-        if exit_code is None:
-            exit_code = 1
-        Exception.__init__(self, message)
-        self.exit_code = exit_code
-
-
-class JSONError(CiderException):
-    def __init__(self, message, filepath, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
-        self.filepath = filepath
-
-
-class UnsupportedOSError(CiderException):
-    def __init__(self, message, macos_version, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
-        self.macos_version = macos_version
-
-
-class XcodeMissingError(CiderException):
-    def __init__(self, message, url, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
-        self.url = url
-
-
-class BrewMissingError(CiderException):
-    def __init__(self, message, url, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
-        self.url = url
-
-
-class BootstrapMissingError(CiderException):
-    def __init__(self, message, path, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
-        self.path = path
-
-
-class SymlinkError(CiderException):
-    pass
-
-
-class AppMissingError(CiderException):
-    pass
+_DEFAULTS_TRUE_RE = re.compile(r"\b(Y(ES)?|TRUE)\b", re.I)
+_DEFAULTS_FALSE_RE = re.compile(r"\b(N(O)?|FALSE)\b", re.I)
 
 
 class Cider(object):
@@ -101,7 +59,7 @@ class Cider(object):
 
     def read_bootstrap(self):
         try:
-            return _read_json(self.bootstrap_file)
+            return read_json(self.bootstrap_file)
         except IOError as e:
             if e.errno == errno.ENOENT:
                 raise BootstrapMissingError(
@@ -114,7 +72,7 @@ class Cider(object):
             raise e
 
     def read_defaults(self):
-        return _read_json(self.defaults_file, {})
+        return read_json(self.defaults_file, {})
 
     def _modify_bootstrap(self, key, transform=None):
         if transform is None:
@@ -124,14 +82,14 @@ class Cider(object):
             bootstrap[key] = sorted(transform(bootstrap.get(key, [])))
             return bootstrap
 
-        return _modify_json(self.bootstrap_file, outer_transform)
+        return modify_json(self.bootstrap_file, outer_transform)
 
     def _modify_defaults(self, domain, transform):
         def outer_transform(defaults):
             defaults[domain] = transform(defaults.get(domain, {}))
             return defaults
 
-        return _modify_json(self.defaults_file, outer_transform)
+        return modify_json(self.defaults_file, outer_transform)
 
     def _remove_dead_targets(self, targets):
         for target in targets:
@@ -264,7 +222,7 @@ class Cider(object):
     def relink(self, force=None):
         force = force if force is not None else False
         symlinks = self.read_bootstrap().get("symlinks", {})
-        previous_targets = _read_json(self.symlink_targets_file, [])
+        previous_targets = read_json(self.symlink_targets_file, [])
         new_targets = []
 
         for source_glob, target in symlinks.items():
@@ -284,12 +242,15 @@ class Cider(object):
 
         self._remove_dead_targets(set(previous_targets) - set(new_targets))
         mkdir_p(os.path.dirname(self.symlink_targets_file))
-        _write_json(self.symlink_targets_file, sorted(new_targets))
+        write_json(self.symlink_targets_file, sorted(new_targets))
 
-    def installed(self):
+    def installed(self, prefix=None):
         bootstrap = self.read_bootstrap()
         key = "casks" if self.cask else "formulas"
-        return bootstrap.get(key, [])
+        formulas = bootstrap.get(key, [])
+        if prefix is not None:
+            return [x for x in formulas if x.startswith(prefix)]
+        return formulas
 
     def missing(self):
         formulas = [item.split()[0].strip() for item in self.installed()]
@@ -302,9 +263,7 @@ class Cider(object):
         return sorted(filter(brew_orphan, set(brewed).difference(formulas)))
 
     def ls(self, formula):
-        formulas = self.installed()
-        if formula:
-            formulas = (x for x in formulas if x.startswith(formula))
+        formulas = self.installed(formula)
         if formulas:
             print("\n".join(formulas))
         else:
@@ -329,18 +288,20 @@ class Cider(object):
 
         return missing_items
 
-    def set_default(self, domain, key, value, force=None):
-        if isinstance(value, str):
+    @staticmethod
+    def json_value(value):
+        if isinstance(value, str) or isinstance(value, unicode):
             try:
-                json_value = json.loads(_DEFAULTS_FALSE_RE.sub(
+                return json.loads(_DEFAULTS_FALSE_RE.sub(
                     "false",
-                    _DEFAULTS_TRUE_RE.sub("true", str(value))
+                    _DEFAULTS_TRUE_RE.sub("true", value)
                 ))
             except ValueError:
-                json_value = str(value)
-        else:
-            json_value = value
+                pass
+        return value
 
+    def set_default(self, domain, key, value, force=None):
+        json_value = self.json_value(value)
         self.defaults.write(domain, key, json_value, force)
 
         def transform(defaults):
@@ -382,7 +343,7 @@ class Cider(object):
             icons[app] = icon
             return bootstrap
 
-        _modify_json(self.bootstrap_file, transform)
+        modify_json(self.bootstrap_file, transform)
         _apply_icon(app, icon)
 
     def remove_icon(self, app):
@@ -395,70 +356,16 @@ class Cider(object):
         if not app_path:
             raise AppMissingError("Application not found: '{0}'".format(app))
 
-        _modify_json(self.bootstrap_file, transform)
+        modify_json(self.bootstrap_file, transform)
         osx.remove_icon(app_path)
 
     def apply_icons(self):
-        bootstrap = _read_json(self.bootstrap_file)
+        bootstrap = read_json(self.bootstrap_file)
         icons = bootstrap.get("icons", {})
         for app, icon in icons.items():
             _apply_icon(app, icon)
 
         tty.puts("Applied icons")
-
-
-def _read_json(path, fallback=None):
-    try:
-        with open(path, "r") as f:
-            return json.load(f)
-    except IOError as e:
-        if fallback is not None and e.errno == errno.ENOENT:
-            return fallback
-
-        raise e
-    except JSONDecodeError as e:
-        raise JSONError(e, path)
-
-
-def _modify_json(path, transform):
-    try:
-        f = open(path, "r+")
-        contents = json.load(f)
-    except IOError as e:
-        if e.errno == errno.ENOENT:
-            f = open(path, "w")
-            contents = {}
-        else:
-            raise e
-    except JSONDecodeError as e:
-        raise JSONError(e, path)
-
-    old_contents = contents
-    contents = transform(copy.deepcopy(contents))
-    changed = bool(old_contents != contents)
-
-    if changed:
-        f.seek(0)
-        f.write(json.dumps(
-            contents,
-            indent=4,
-            sort_keys=True,
-            separators=(',', ': ')
-        ))
-        f.truncate()
-
-    f.close()
-    return changed
-
-
-def _write_json(path, contents):
-    with open(path, "w") as f:
-        f.write(json.dumps(
-            contents,
-            indent=4,
-            sort_keys=True,
-            separators=(',', ': ')
-        ))
 
 
 def _make_symlink(source, target, debug=None, force=None):

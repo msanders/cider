@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 from . import _tty as tty
+from .exceptions import JSONError
 from subprocess import CalledProcessError
 import click
+import copy
 import errno
+import json
 import os
 import pwd
 import subprocess
+
+JSONDecodeError = ValueError
 
 
 class Brew(object):
@@ -151,3 +156,42 @@ def commonpath(paths):
     paths = (os.path.dirname(p) if not os.path.isdir(p) else p for p in paths)
     norm_paths = [os.path.abspath(p) + os.path.sep for p in paths]
     return os.path.dirname(os.path.commonprefix(norm_paths))
+
+
+def read_json(path, fallback=None):
+    try:
+        with open(path, "r") as f:
+            return json.loads(f.read() or "{}")
+    except IOError as e:
+        if fallback is not None and e.errno == errno.ENOENT:
+            return fallback
+
+        raise e
+    except JSONDecodeError as e:
+        raise JSONError(e, path)
+
+
+def modify_json(path, transform):
+    contents = read_json(path, {})
+    with open(path, "w") as f:
+        old_contents = contents
+        contents = transform(copy.deepcopy(contents))
+        changed = bool(old_contents != contents)
+
+        if changed:
+            json.dump(
+                contents,
+                f,
+                indent=4,
+                sort_keys=True,
+                separators=(',', ': ')
+            )
+
+        return changed
+
+
+def write_json(path, contents):
+    with open(path, "w") as f:
+        json.dump(
+            contents, f, indent=4, sort_keys=True, separators=(',', ': ')
+        )

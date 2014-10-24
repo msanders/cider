@@ -7,7 +7,7 @@ from webbrowser import open as urlopen
 import click
 import sys
 
-from .core import (
+from .exceptions import (
     BrewMissingError, CiderException, JSONError, XcodeMissingError
 )
 

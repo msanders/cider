@@ -1,5 +1,21 @@
-from setuptools import setup, find_packages
+from ast import literal_eval
 from distutils.core import Extension
+from setuptools import setup, find_packages
+import re
+
+
+def module_attr_re(attr):
+    return re.compile(r'__{0}__\s*=\s*(.*)'.format(attr))
+
+
+def grep_attr(body, attr):
+    return str(literal_eval(module_attr_re("version").search(
+        body.decode("utf-8")
+    ).group(1)))
+
+with open("cider/__init__.py", "r") as f:
+    body = f.read()
+    version, author = [grep_attr(body, attr) for attr in ("version", "author")]
 
 ext = Extension(
     "cider._osx",
@@ -15,9 +31,9 @@ ext = Extension(
 
 setup(
     name='cider',
-    author='Michael Sanders',
+    author=author,
     author_email='michael [at] msanders [dot] com',
-    version='1.0',
+    version=version,
     url='https://github.com/msanders/cider',
     packages=find_packages(),
     include_package_data=True,
@@ -31,9 +47,22 @@ setup(
         cyder=cider.cli:main
     ''',
     description='Hassle-free bootstrapping using Homebrew.',
+    license=license,
     ext_modules=[ext],
+    platforms=["osx"],
     classifiers=[
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Environment :: MacOS X',
+        'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python'
+        'Natural Language :: English',
+        'Operating System :: MacOS :: MacOS X',
+        'Programming Language :: Objective C',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: Software Development',
+        'Topic :: System',
+        'Topic :: System :: Archiving :: Backup',
+        'Topic :: Utilities'
     ],
 )

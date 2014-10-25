@@ -43,8 +43,8 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        cider=cider.cli:main
-        cyder=cider.cli:main
+        cider=cider._cli:main
+        cyder=cider._cli:main
     ''',
     description='Hassle-free bootstrapping using Homebrew.',
     license=license,

@@ -243,7 +243,7 @@ class Cider(object):
             if not isdirname(target) and ("*" in source_glob or
                                           "?" in source_glob):
                 raise SymlinkError(
-                    "Invalid symlink: {0} => {1} (did you mean to add a " \
+                    "Invalid symlink: {0} => {1} (did you mean to add a "
                     "trailing '/'?)".format(source_glob, target)
                 )
 
@@ -441,6 +441,7 @@ class Cider(object):
             _apply_icon(app, icon)
 
         tty.puts("Applied icons")
+
 
 def _apply_icon(app, icon):
     app_path = osx.path_for_app(app)

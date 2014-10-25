@@ -196,7 +196,7 @@ class TestCiderCore(object):
             ext = random_str(min_length=1, max_length=8)
             os.makedirs(str(innerdir))
 
-            for i in range(random.randint(0, 10)):
+            for _ in range(random.randint(0, 10)):
                 touch(str(innerdir.join("{0}.{1}".format(random_str(), ext))))
 
             path = str(outerdir.join(random_str(min_length=1)))
@@ -208,20 +208,19 @@ class TestCiderCore(object):
                 symkey(outerdir, path): symvalue(targetdir, "a/b/d"),
             }
 
-
         cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
         cider.mklink = MagicMock(return_value=True)
 
         for srcglob, target in generate_symlinks().items():
             invalid = not isdirname(target) and ("*" in srcglob or
                                                  "?" in srcglob)
-            old_targets = cider._cached_targets()
+            old_targets = cider._cached_targets()  # pylint:disable=W0212
             cider.read_bootstrap = MagicMock(return_value={
-                "symlinks": { srcglob: target }
+                "symlinks": {srcglob: target}
             })
 
             with pytest.raises(SymlinkError) if invalid else empty():
-                new_targets = set(cider.relink())
+                new_targets = set(cider.relink(force))
                 for src in iglob(srcglob):
                     cider.mklink.assert_called_with(src, cider.expandtarget(
                         src, target
@@ -231,7 +230,7 @@ class TestCiderCore(object):
                 for dead_target in set(old_targets) - new_targets:
                     assert not os.path.exists(dead_target)
 
-                new_cache = cider._cached_targets()
+                new_cache = cider._cached_targets()  # pylint:disable=W0212
                 assert new_targets == set(new_cache).intersection(new_targets)
 
     def test_mklink(self, tmpdir, debug, verbose):

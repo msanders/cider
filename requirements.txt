@@ -1,2 +1,2 @@
-pytest-quickcheck
+-e hg+https://bitbucket.org/t2y/pytest-quickcheck#egg=pytest-quickcheck
 prospector

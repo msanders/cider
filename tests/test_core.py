@@ -13,6 +13,9 @@ except ImportError:
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
 class TestBrewCore(object):
     @pytest.mark.randomize(formulas=list_of(str, min_items=1), force=bool)
+    @pytest.mark.randomize(
+        formulas=list_of(str, min_items=1), force=bool, min_length=1
+    )
     def test_install(self, tmpdir, cask, debug, verbose, formulas, force):
         cider = Cider(cask, debug, verbose, cider_dir=str(tmpdir))
         cider.brew = MagicMock()
@@ -23,7 +26,7 @@ class TestBrewCore(object):
         for formula in formulas:
             assert formula in cider.read_bootstrap().get(key, [])
 
-    @pytest.mark.randomize(formulas=list_of(str, min_items=1))
+    @pytest.mark.randomize(formulas=list_of(str, min_items=1), min_length=1)
     def test_rm(self, tmpdir, cask, debug, verbose, formulas):
         cider = Cider(cask, debug, verbose, cider_dir=str(tmpdir))
         cider.brew = MagicMock()

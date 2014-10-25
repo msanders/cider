@@ -195,7 +195,7 @@ def test_mkdir_p(tmpdir, path, fname):
     os.remove(str(tmpdir.join(fname)))
 
 
-@pytest.mark.randomize(path=str, home=str)
+@pytest.mark.randomize(path=str, home=str, min_length=1)
 def test_collapse_user(tmpdir, path, home):
     homedir = str(tmpdir.join(home))
     with patch.dict("os.environ", {"HOME": homedir}):
@@ -211,7 +211,7 @@ def test_collapse_user(tmpdir, path, home):
     os.rmdir(homedir)
 
 
-@pytest.mark.randomize(path1=str, path2=str, bogusprefix=str)
+@pytest.mark.randomize(path1=str, path2=str, bogusprefix=str, min_length=1)
 def test_commonpath(tmpdir, path1, path2, bogusprefix):
     dir1 = str(tmpdir.join(path1))
     dir2 = str(tmpdir.join(path2))
@@ -225,7 +225,7 @@ def test_commonpath(tmpdir, path1, path2, bogusprefix):
 
 
 @pytest.mark.parametrize("fallback", [None, {}, []])
-@pytest.mark.randomize(path=str, contents=dict_of(str, str))
+@pytest.mark.randomize(path=str, contents=dict_of(str, str), min_length=1)
 def test_read_json(path, contents, fallback):
     def test_case(assertion, mock=None, read_data=None):
         with patch("__builtin__.open", mock_open(mock, read_data)):
@@ -249,7 +249,7 @@ def test_read_json(path, contents, fallback):
         )
 
 
-@pytest.mark.randomize(path=str, contents=dict_of(str, str), fixed_length=10)
+@pytest.mark.randomize(path=str, contents=dict_of(str, str), min_length=1)
 def test_modify_json(tmpdir, path, contents):
     fullpath = str(tmpdir.join(path))
 
@@ -283,7 +283,7 @@ def test_modify_json(tmpdir, path, contents):
         )
 
 
-@pytest.mark.randomize(path=str, contents=dict_of(str, str))
+@pytest.mark.randomize(path=str, contents=dict_of(str, str), min_length=1)
 def test_write_json(tmpdir, path, contents):
     fullpath = str(tmpdir.join(path))
     sh.write_json(fullpath, contents)

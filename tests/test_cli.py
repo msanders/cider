@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
-from ._lib import Patcher
-from cider import cli
+from cider import _cli as cli
 from click.testing import CliRunner
 from pytest import list_of
 import pytest

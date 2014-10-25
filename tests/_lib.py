@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
+from uuid import uuid4
+import os
+import random
 
 
 def threshold_comparator(threshold):
@@ -29,3 +32,20 @@ def assert_called_with_threshold(mock_self, threshold, *args, **kwargs):
         *args,
         **kwargs
     )
+
+
+def random_case(string):
+    return "".join(random.choice([c.upper(), c.lower()]) for c in string)
+
+
+def random_str(fixed_length=None, min_length=None, max_length=None):
+    min_length = min_length if min_length is not None else 0
+    max_length = max_length if max_length is not None else 32
+    if fixed_length is None:
+        fixed_length = random.randint(min_length, max_length)
+    return str(uuid4()).replace("-", "")[0:fixed_length]
+
+
+def touch(fname):
+    with open(fname, "a"):
+        os.utime(fname, None)

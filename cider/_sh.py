@@ -138,16 +138,15 @@ def mkdir_p(path):
             raise
 
 
-def touch(fname, times=None):
-    with open(fname, 'a'):
-        os.utime(fname, times)
-
-
 def collapseuser(path):
     home_dir = os.environ.get("HOME", pwd.getpwuid(os.getuid()).pw_dir)
     if os.path.samefile(home_dir, commonpath([path, home_dir])):
         return os.path.join("~", os.path.relpath(path, home_dir))
     return path
+
+
+def isdirname(path):
+    return path.endswith(os.path.sep) or path == "~"
 
 
 # os.path.commonprefix doesn't behave as you'd expect - see

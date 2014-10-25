@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
+from ._lib import touch
 from cider import _sh as sh
 from cider._sh import Brew, Defaults
 from cider.exceptions import JSONError
@@ -186,7 +187,7 @@ def test_mkdir_p(tmpdir, path, fname):
 
     # Should raise one when a file does.
     os.rmdir(str(tmpdir.join(path)))
-    _touch(str(tmpdir.join(fname)))
+    touch(str(tmpdir.join(fname)))
 
     with pytest.raises(OSError):
         sh.mkdir_p(str(tmpdir.join(fname)))
@@ -288,11 +289,6 @@ def test_write_json(tmpdir, path, contents):
     fullpath = str(tmpdir.join(path))
     sh.write_json(fullpath, contents)
     assert sh.read_json(fullpath) == contents
-
-
-def _touch(fname):
-    with open(fname, "a"):
-        os.utime(fname, None)
 
 
 def _samepath(path1, path2):

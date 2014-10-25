@@ -8,12 +8,12 @@ from .exceptions import (
 )
 from ._sh import (
     Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p, read_json,
-    write_json, modify_json
+    write_json, modify_json, isdirname
 )
 from rfc3987 import parse as urlparse
 from tempfile import mkdtemp
+from glob import iglob
 import errno
-import glob
 import json
 import os
 import platform
@@ -90,6 +90,13 @@ class Cider(object):
             return defaults
 
         return modify_json(self.defaults_file, outer_transform)
+
+    def _cached_targets(self):
+        return read_json(self.symlink_targets_file, [])
+
+    def _update_target_cache(self, new_targets):
+        mkdir_p(os.path.dirname(self.symlink_targets_file))
+        write_json(self.symlink_targets_file, sorted(new_targets))
 
     def _remove_dead_targets(self, targets):
         for target in targets:
@@ -219,48 +226,116 @@ class Cider(object):
         else:
             tty.puterr("{0} tap not found in bootstrapped".format(tap))
 
+    @staticmethod
+    def expandtarget(source, target):
+        expanded = os.path.expanduser(target)
+        if isdirname(target):
+            return os.path.join(expanded, os.path.basename(source))
+        return expanded
+
     def relink(self, force=None):
         force = force if force is not None else False
         symlinks = self.read_bootstrap().get("symlinks", {})
-        previous_targets = read_json(self.symlink_targets_file, [])
+        old_targets = self._cached_targets()
         new_targets = []
 
         for source_glob, target in symlinks.items():
+            if not isdirname(target) and ("*" in source_glob or
+                                          "?" in source_glob):
+                raise SymlinkError(
+                    "Invalid symlink: {0} => {1} (did you mean to add a " \
+                    "trailing '/'?)".format(source_glob, target)
+                )
+
+            print("mkdir_p({0})".format(os.path.dirname(os.path.expanduser(target))))
             mkdir_p(os.path.dirname(os.path.expanduser(target)))
-            sources = glob.iglob(os.path.join(self.symlink_dir, source_glob))
+            sources = iglob(os.path.join(self.symlink_dir, source_glob))
             for source in sources:
                 source = os.path.join(self.cider_dir, source)
-                source_target = os.path.expanduser(target)
-                if target.endswith(os.path.sep) or target == "~":
-                    source_target = os.path.join(
-                        source_target,
-                        os.path.basename(source)
-                    )
+                source_target = self.expandtarget(source, target)
+                mkdir_p(source_target)
 
-                _make_symlink(source, source_target, self.debug, force)
-                new_targets.append(source_target)
+                if self.mklink(source, source_target, force):
+                    new_targets.append(source_target)
 
-        self._remove_dead_targets(set(previous_targets) - set(new_targets))
-        mkdir_p(os.path.dirname(self.symlink_targets_file))
-        write_json(self.symlink_targets_file, sorted(new_targets))
+        self._remove_dead_targets(set(old_targets) - set(new_targets))
+        self._update_target_cache(new_targets)
+        return new_targets
+
+    def mklink(self, source, target, force=None):
+        linked = False
+
+        if not os.path.exists(source):
+            raise SymlinkError(
+                "symlink source \"{0}\" does not exist".format(
+                    collapseuser(source)
+                )
+            )
+
+        try:
+            os.symlink(source, target)
+            linked = True
+            tty.puts("symlinked {0} -> {1}".format(
+                tty.color(collapseuser(target), tty.MAGENTA),
+                collapseuser(source)
+            ))
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
+            if os.path.islink(target):
+                if os.path.samefile(
+                    os.path.realpath(target),
+                    os.path.realpath(source)
+                ):
+                    linked = True
+                    tty.putdebug("Already linked: {0} -> {1}".format(
+                        tty.color(collapseuser(target), tty.MAGENTA),
+                        collapseuser(source)
+                    ), self.debug)
+                else:
+                    fmt = "Linked to wrong target: {0} -> {1} (instead of {2})"
+                    tty.puterr(fmt.format(
+                        tty.color(target, tty.MAGENTA),
+                        os.path.realpath(collapseuser(target)),
+                        os.path.realpath(collapseuser(source))
+                    ), warning=force)
+            else:
+                tty.puterr("{0} symlink target already exists at: {1}".format(
+                    collapseuser(source),
+                    collapseuser(target)
+                ), warning=force)
+
+        if not linked and force:
+            try:
+                osx.move_to_trash(target)
+                print(tty.progress("Moved {0} to trash").format(target))
+            except OSError as e:
+                tty.puterr("Error moving {0} to trash: {1}".format(
+                    target, str(e))
+                )
+                return False
+            return self.mklink(source, target, force)
+
+        return linked
 
     def installed(self, prefix=None):
         bootstrap = self.read_bootstrap()
         key = "casks" if self.cask else "formulas"
         formulas = bootstrap.get(key, [])
-        if prefix is not None:
+        if prefix:
             return [x for x in formulas if x.startswith(prefix)]
         return formulas
 
     def missing(self):
-        formulas = [item.split()[0].strip() for item in self.installed()]
+        installed = [item.split()[0].strip() for item in self.installed()]
         brewed = self.brew.ls()
 
         def brew_orphan(formula):
             uses = self.brew.uses(formula)
-            return len(set(formulas).intersection(set(uses))) == 0
+            return len(set(installed).intersection(set(uses))) == 0
 
-        return sorted(filter(brew_orphan, set(brewed).difference(formulas)))
+        return sorted(filter(brew_orphan, set(brewed) - set(installed)))
 
     def ls(self, formula):
         formulas = self.installed(formula)
@@ -366,63 +441,6 @@ class Cider(object):
             _apply_icon(app, icon)
 
         tty.puts("Applied icons")
-
-
-def _make_symlink(source, target, debug=None, force=None):
-    linked = False
-
-    if not os.path.exists(source):
-        raise SymlinkError(
-            "symlink source \"{0}\" does not exist".format(
-                collapseuser(source)
-            )
-        )
-
-    try:
-        os.symlink(source, target)
-        linked = True
-        tty.puts("symlinked {0} -> {1}".format(
-            tty.color(collapseuser(target), tty.MAGENTA),
-            collapseuser(source)
-        ))
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-
-        if os.path.islink(target):
-            if os.path.samefile(
-                os.path.realpath(target),
-                os.path.realpath(source)
-            ):
-                linked = True
-                tty.putdebug("Already linked: {0} -> {1}".format(
-                    tty.color(collapseuser(target), tty.MAGENTA),
-                    collapseuser(source)
-                ), debug)
-            else:
-                fmt = "Linked to wrong target: {0} -> {1} (instead of {2})"
-                tty.puterr(fmt.format(
-                    tty.color(target, tty.MAGENTA),
-                    os.path.realpath(collapseuser(target)),
-                    os.path.realpath(collapseuser(source))
-                ), warning=force)
-        else:
-            tty.puterr("{0} symlink target already exists at: {1}".format(
-                collapseuser(source),
-                collapseuser(target)
-            ), warning=force)
-
-    if not linked and force:
-        try:
-            osx.move_to_trash(target)
-            print(tty.progress("Moved {0} to trash").format(target))
-        except OSError as e:
-            tty.puterr("Error moving {0} to trash: {1}".format(target, str(e)))
-            return False
-        return _make_symlink(source, target, debug, force)
-
-    return linked
-
 
 def _apply_icon(app, icon):
     app_path = osx.path_for_app(app)

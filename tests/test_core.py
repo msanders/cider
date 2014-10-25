@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
+from ._lib import random_case, random_str, touch
 from cider import Cider
-from cider.exceptions import BootstrapMissingError
+from cider.exceptions import BootstrapMissingError, SymlinkError
+from cider._sh import isdirname
 from pytest import list_of, dict_of
+from glob import iglob
 import errno
+import os
 import pytest
 import random
 
 try:
+    from contextlib import nested as empty
     from mock import MagicMock, patch
 except ImportError:
+    from contextlib import ExitStack as empty  # noqa pylint: disable=E0611
     from unittest.mock import MagicMock, patch  # pylint: disable=F0401,E0611
 
 
@@ -161,3 +167,98 @@ class TestCiderCore(object):
 
             assert cider.read_defaults() == data
             mock.assert_called_with(cider.defaults_file, {})
+
+    @pytest.mark.randomize(force=bool)
+    def test_relink(self, tmpdir, debug, verbose, force):
+        """
+        Tests that:
+        1. Target directories are created.
+        2. For each source in glob(key), mklink(src, expandtarget(src, target))
+           is called.
+        3. Previously-cached targets are removed.
+        4. Cache is updated with new targets.
+        """
+        def generate_symlinks():
+            srcdir = tmpdir.join(random_str(min_length=1))
+
+            def symkey(directory, key):
+                return str(directory.join(key).relto(srcdir))
+
+            def symvalue(directory, value):
+                return str(directory.join(value)) + (
+                    "/" if value.endswith("/") else ""
+                )
+
+            outerdir = srcdir.join(random_str(min_length=1))
+            innerdir = outerdir.join(random_str(min_length=1))
+            targetdir = tmpdir.join(random_str(min_length=1))
+
+            ext = random_str(min_length=1, max_length=8)
+            os.makedirs(str(innerdir))
+
+            for i in range(random.randint(0, 10)):
+                touch(str(innerdir.join("{0}.{1}".format(random_str(), ext))))
+
+            path = str(outerdir.join(random_str(min_length=1)))
+            touch(path)
+
+            return {
+                symkey(outerdir, "*/*." + ext): symvalue(targetdir, "a/b/c/"),
+                symkey(outerdir, "*/*." + ext): symvalue(targetdir, "a/b/c"),
+                symkey(outerdir, path): symvalue(targetdir, "a/b/d"),
+            }
+
+
+        cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
+        cider.mklink = MagicMock(return_value=True)
+
+        for srcglob, target in generate_symlinks().items():
+            invalid = not isdirname(target) and ("*" in srcglob or
+                                                 "?" in srcglob)
+            old_targets = cider._cached_targets()
+            cider.read_bootstrap = MagicMock(return_value={
+                "symlinks": { srcglob: target }
+            })
+
+            with pytest.raises(SymlinkError) if invalid else empty():
+                new_targets = set(cider.relink())
+                for src in iglob(srcglob):
+                    cider.mklink.assert_called_with(src, cider.expandtarget(
+                        src, target
+                    ))
+
+                assert os.path.isdir(os.path.dirname(target))
+                for dead_target in set(old_targets) - new_targets:
+                    assert not os.path.exists(dead_target)
+
+                new_cache = cider._cached_targets()
+                assert new_targets == set(new_cache).intersection(new_targets)
+
+    def test_mklink(self, tmpdir, debug, verbose):
+        cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
+        source = str(tmpdir.join(random_str(min_length=1)))
+        target = str(tmpdir.join(random_str(min_length=1)))
+
+        # SymlinkError should be raised if source does not exist.
+        with pytest.raises(SymlinkError):
+            assert not cider.mklink(source, target)
+
+        # Should succeed for valid source/target.
+        touch(source)
+        for _ in range(2):
+            assert cider.mklink(source, target)
+            assert os.path.islink(target)
+
+        # Should fail for existing target.
+        os.remove(target)
+        touch(target)
+        assert not cider.mklink(source, target)
+        assert not os.path.islink(target)
+
+        # Should allow removing existing target with --force.
+        with patch("cider._osx.move_to_trash", side_effect=os.remove):
+            assert cider.mklink(source, target, force=True)
+
+
+def setup_module():
+    random.seed()

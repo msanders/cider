@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
-from ._lib import Patcher
 from cider import _sh as sh
 from cider._sh import Brew, Defaults
 from cider.exceptions import JSONError
@@ -11,7 +10,6 @@ import json
 import os
 import pytest
 import random
-import subprocess
 
 try:
     from contextlib import nested as empty
@@ -24,16 +22,14 @@ except ImportError:
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
 @patch("cider._sh.click.confirm", MagicMock(return_value=True))
 class TestBrew(object):
-    patcher = Patcher()
-
     @classmethod
     def setup_class(cls):
-        cls.patcher.saveattrs((sh, "spawn"))
-        sh.spawn = MagicMock(return_value=0)
+        cls.patcher = patch("cider._sh.spawn", spec=True, return_value=0)
+        sh.spawn = cls.patcher.start()
 
     @classmethod
     def teardown_class(cls):
-        cls.patcher.teardown()
+        cls.patcher.stop()
 
     @pytest.mark.randomize(formulas=list_of(str, min_items=1), force=bool)
     def test_install(self, cask, debug, verbose, formulas, force):
@@ -122,16 +118,14 @@ class TestBrew(object):
 
 @pytest.mark.randomize(debug=bool)
 class TestDefaults(object):
-    patcher = Patcher()
-
     @classmethod
     def setup_class(cls):
-        cls.patcher.saveattrs((sh, "spawn"))
-        sh.spawn = MagicMock(return_value=0)
+        cls.patcher = patch("cider._sh.spawn", spec=True, return_value=0)
+        sh.spawn = cls.patcher.start()
 
     @classmethod
     def teardown_class(cls):
-        cls.patcher.teardown()
+        cls.patcher.stop()
 
     @pytest.mark.randomize(domain=str, key=str, value=str, force=bool)
     def test_write(self, debug, domain, key, value, force):
@@ -158,40 +152,33 @@ class TestDefaults(object):
     debug=bool
 )
 def test_spawn(args, check_call, check_output, debug):
-    patches = [
-        (subprocess, "check_output"),
-        (subprocess, "check_call"),
-        (subprocess, "call")
-    ]
+    if check_output:
+        expected_call = "check_output"
+    elif check_call:
+        expected_call = "check_call"
+    else:
+        expected_call = "call"
 
-    with Patcher(*patches):
-        if check_output:
-            expected_mock = subprocess.check_output = MagicMock()
-        elif check_call:
-            expected_mock = subprocess.check_call = MagicMock()
-        else:
-            expected_mock = subprocess.call = MagicMock()
-
-        expected_mock.return_value = random.randint(0, 100)
+    with patch("subprocess.{0}".format(expected_call)) as call:
+        call.return_value = random.randint(0, 100)
         actual_return_value = sh.spawn(
             args, check_call=check_call, check_output=check_output, debug=debug
         )
 
-        expected_mock.assert_called_with(args)
-        assert actual_return_value == expected_mock.return_value
+        call.assert_called_with(args)
+        assert actual_return_value == call.return_value
 
 
-@pytest.mark.randomize(url=str, path=str)
+@pytest.mark.randomize(url=str, path=str, min_length=1)
 def test_curl(url, path):
-    with Patcher((sh, "spawn")):
-        sh.spawn = MagicMock(return_value=0)
+    with patch("cider._sh.spawn", return_value=0) as spawn:
         args = ["curl", url, "-o", path, "--progress-bar"]
 
         sh.curl(url, path)
-        sh.spawn.assert_called_with(args)
+        spawn.assert_called_with(args)
 
 
-@pytest.mark.randomize(path=str, fname=str, fixed_length=10)
+@pytest.mark.randomize(path=str, fname=str, min_length=1)
 def test_mkdir_p(tmpdir, path, fname):
     # Shouldn't raise an exception when directory already exists.
     sh.mkdir_p(str(tmpdir.join(path)))

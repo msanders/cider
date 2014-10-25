@@ -6,9 +6,9 @@ from pytest import list_of
 import pytest
 
 try:
-    from mock import MagicMock
+    from mock import patch
 except ImportError:
-    from unittest.mock import MagicMock  # pylint: disable=F0401,E0611
+    from unittest.mock import patch  # pylint: disable=F0401,E0611
 
 
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
@@ -139,8 +139,7 @@ def _invoke_command(cmd, args, **flags):
     }
     end_flags = _format_flags(flags)
 
-    with Patcher((cli, "Cider")):
-        MockCider = cli.Cider = MagicMock()  # nopep8
+    with patch("cider._cli.Cider") as MockCider:
         MockCider().debug = start_flags.get("debug")
         MockCider().verbose = start_flags.get("verbose")
         cliargs = [arg for arg in args if arg is not None] + end_flags

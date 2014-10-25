@@ -102,16 +102,19 @@ class TestBrewCore(object):
 
 @pytest.mark.randomize(debug=bool, verbose=bool)
 class TestCiderCore(object):
+    @pytest.mark.parametrize("bool_values", [
+        "yes", "no", "y", "n", "true", "false"
+    ])
     @pytest.mark.randomize(
         domain=str, key=str, values=[str, int, float], force=bool
     )
     def test_set_default(
-        self, tmpdir, debug, verbose, domain, key, values, force
+        self, tmpdir, debug, verbose, domain, key, values, bool_values, force
     ):
         cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
         cider.defaults = MagicMock()
 
-        for value in values + ["YES", "NO"]:
+        for value in values + map(random_case, bool_values):
             json_value = cider.json_value(value)
             cider.set_default(domain, key, value, force=force)
             cider.defaults.write.assert_called_with(

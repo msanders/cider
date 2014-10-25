@@ -247,7 +247,6 @@ class Cider(object):
                     "trailing '/'?)".format(source_glob, target)
                 )
 
-            print("mkdir_p({0})".format(os.path.dirname(os.path.expanduser(target))))
             mkdir_p(os.path.dirname(os.path.expanduser(target)))
             sources = iglob(os.path.join(self.symlink_dir, source_glob))
             for source in sources:

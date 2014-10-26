@@ -112,12 +112,12 @@ class Cider(object):
                     collapseuser(target))
                 ))
 
-    def restore(self):
+    def _assert_requirements(self):
         macos_version = platform.mac_ver()[0]
 
         if int(macos_version.split(".")[1]) < 9:
             raise UnsupportedOSError(
-                "Unsupported OS version; please upgrade to 10.9 or later " +
+                "Unsupported OS version; please upgrade to 10.9 or later "
                 "and try again.",
                 macos_version
             )
@@ -133,41 +133,48 @@ class Cider(object):
                 "http://brew.sh/#install"
             )
 
+    def restore(self):
+        self._assert_requirements()
+        caskbrew = Brew(True, self.debug, self.verbose)
+        homebrew = Brew(False, self.debug, self.verbose)
+
         bootstrap = self.read_bootstrap()
         casks = bootstrap.get("casks", [])
-        formulas = bootstrap.get("formulas", [])
         dependencies = bootstrap.get("dependencies", {})
 
-        for script in bootstrap.get("before-scripts", []):
-            spawn([script], shell=True, debug=self.debug, cwd=self.cider_dir)
+        self.run_scripts(before=True)
 
         for tap in bootstrap.get("taps", []):
-            self.brew.tap(tap)
+            homebrew.tap(tap)
 
-        for formula in formulas:
+        for formula in bootstrap.get("formulas", []):
             if formula in dependencies:
                 deps = dependencies[formula]
                 deps = deps if isinstance(deps, list) else [deps]
 
                 # Currently only cask dependencies are supported.
-                deps = (dep for dep in deps if dep.startswith("cask/"))
+                deps = (dep for dep in deps if dep.startswith("casks/"))
 
-                for dep in (deps):
+                for dep in deps:
                     cask = dep.split("/")[1]
-                    Brew(cask=True).safe_install(cask)
+                    print(tty.progress(
+                        "Installing {0} dependency for {1}").format(
+                            cask, formula
+                        )
+                    )
+
+                    caskbrew.safe_install(cask)
                     del casks[casks.index(cask)]
 
-            self.brew.safe_install(formula)
+            homebrew.safe_install(formula)
 
         for cask in casks:
-            Brew(cask=True).safe_install(cask)
+            caskbrew.safe_install(cask)
 
         self.relink()
         self.apply_defaults()
         self.apply_icons()
-
-        for script in bootstrap.get("after-scripts", []):
-            spawn([script], shell=True, debug=self.debug, cwd=self.cider_dir)
+        self.run_scripts(after=True)
 
     def install(self, *formulas, **kwargs):
         # Avoid pylint scoping warning W0640
@@ -397,17 +404,17 @@ class Cider(object):
 
     def apply_defaults(self):
         defaults = self.read_defaults()
-        for domain in defaults:
-            options = defaults[domain]
+        for domain, options in defaults.items():
             for key, value in options.items():
                 self.defaults.write(domain, key, value)
 
         tty.puts("Applied defaults")
 
-    def run_scripts(self):
+    def run_scripts(self, before=None, after=None):
         bootstrap = self.read_bootstrap()
-        scripts = bootstrap.get("before-scripts", []) + \
-            bootstrap.get("after-scripts", [])
+        scripts = []
+        scripts += bootstrap.get("before-scripts", []) if before else []
+        scripts += bootstrap.get("after-scripts", []) if after else []
         for script in scripts:
             spawn([script], shell=True, debug=self.debug, cwd=self.cider_dir)
 

@@ -209,7 +209,7 @@ def apply_icons(cider):
 @cli.command("run-scripts")
 @click.pass_obj
 def run_scripts(cider):
-    cider.run_scripts()
+    cider.run_scripts(before=True, after=True)
 
 
 def main():

@@ -259,7 +259,6 @@ class Cider(object):
             for source in sources:
                 source = os.path.join(self.cider_dir, source)
                 source_target = self.expandtarget(source, target)
-                mkdir_p(source_target)
 
                 if self.mklink(source, source_target, force):
                     new_targets.append(source_target)

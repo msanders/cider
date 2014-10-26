@@ -173,7 +173,7 @@ def test_spawn(args, check_call, check_output, debug):
 @pytest.mark.randomize(url=str, path=str, min_length=1)
 def test_curl(url, path):
     with patch("cider._sh.spawn", return_value=0) as spawn:
-        args = ["curl", url, "-o", path, "--progress-bar"]
+        args = ["curl", "-L", url, "-o", path, "--progress-bar"]
 
         sh.curl(url, path)
         spawn.assert_called_with(args)

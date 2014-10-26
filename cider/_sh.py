@@ -127,7 +127,7 @@ def spawn(args, **kwargs):
 
 
 def curl(url, path):
-    return spawn(["curl", url, "-o", path, "--progress-bar"])
+    return spawn(["curl", "-L", url, "-o", path, "--progress-bar"])
 
 
 def mkdir_p(path):

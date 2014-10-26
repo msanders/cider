@@ -42,7 +42,7 @@ class Brew(object):
 
     def safe_install(self, formula):
         prompt = "Failed to install {0}. Continue? [y/N]".format(formula)
-        return self.__spawn("install", [formula], prompt)
+        return self.__spawn("install", formula.split(" "), prompt)
 
     def install(self, *formulas, **kwargs):
         formulas = list(formulas) or []

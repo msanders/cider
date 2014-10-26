@@ -1,6 +1,5 @@
 from ast import literal_eval
-from distutils.core import Extension
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 import re
 
 
@@ -47,7 +46,7 @@ setup(
         cyder=cider._cli:main
     ''',
     description='Hassle-free bootstrapping using Homebrew.',
-    license=license,
+    license='MIT',
     ext_modules=[ext],
     platforms=["osx"],
     classifiers=[

@@ -15,21 +15,7 @@ Simply run the following on a new machine:
 ... and you’ll be back up and running, with all of your applications and command line utilities re-installed (and configurations restored).
 
 
-In addition to Homebrew, Cider also supports managing your user defaults, restoring symlinks, and running scripts to conveniently manage other settings such as your dotfiles. Here’s a full list of the commands currently supported:
-
-    cider [cask] install FORMULA...
-    cider [cask] rm FORMULA...
-    cider [cask] list [FORMULA]
-    cider [cask] missing
-    cider set-default [-g] NAME KEY VALUE
-    cider remove-default [-g] NAME KEY
-    cider apply-defaults
-    cider set-icon APP ICON
-    cider remove-icon APP
-    cider apply-icons
-    cider run-scripts
-    cider restore
-    cider relink
+In addition to Homebrew, Cider also supports managing your user defaults, restoring symlinks, and running scripts to conveniently manage other settings such as your dotfiles.
 
 
 ## Installation

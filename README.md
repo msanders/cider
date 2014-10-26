@@ -8,11 +8,28 @@ Cider is a simple wrapper for [Homebrew](http://brew.sh) and [Homebrew Cask](htt
 
 Simply run the following on a new machine:
 
-    git clone [YOUR_DOTFILES] ~/.cider
+    git clone [YOUR_REPO] ~/.cider
     cider restore
 
 
 ... and you’ll be back up and running, with all of your applications and command line utilities re-installed (and configurations restored).
+
+
+In addition to Homebrew, Cider also supports managing your user defaults, restoring symlinks, and running scripts to conveniently manage other settings such as your dotfiles. Here’s a full list of the commands currently supported:
+
+    cider [cask] install FORMULA...
+    cider [cask] rm FORMULA...
+    cider [cask] list [FORMULA]
+    cider [cask] missing
+    cider set-default [-g] NAME KEY VALUE
+    cider remove-default [-g] NAME KEY
+    cider apply-defaults
+    cider set-icon APP ICON
+    cider remove-icon APP
+    cider apply-icons
+    cider run-scripts
+    cider restore
+    cider relink
 
 
 ## Installation
@@ -24,7 +41,7 @@ Cider is available directly from [PyPI](https://pypi.python.org/pypi/cider):
 
 ## Configuration
 
-All configuration files are stored in the `~/.cider` directory as JSON. E.g., here's an example bootstrap file:
+All configuration files are stored in the `~/.cider` directory as JSON. E.g., here’s an example bootstrap file:
 
     {
         "after-scripts": [
@@ -56,6 +73,16 @@ All configuration files are stored in the `~/.cider` directory as JSON. E.g., he
             "python3",
             "xctool"
         ],
+		"icons": {
+			"iTerm": "https://dribbble.com/shots/1702947-iTerm-Replacement-Icon/attachments/271548"
+		},
+		"symlinks": {
+			"bash/.*": "~",
+			"bin/*": "~/bin/",
+			"git/.*": "~",
+			"sh/.*": "~",
+			"vim/.*": "~"
+		},
         "taps": [
             "caskroom/cask"
         ]
@@ -79,4 +106,4 @@ User defaults are stored similarly:
 
 There doesn't seem to be a way to re-install purchases made from Mac App Store via the command line just yet, so those have to be done by hand.
 
-**Note**: Cider is a work-in-progress, don't use it for anything important yet!
+**Note**: Cider is a work-in-progress, but it’s fairly well-tested and should be kind to your machine.

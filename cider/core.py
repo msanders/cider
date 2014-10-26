@@ -74,12 +74,17 @@ class Cider(object):
     def read_defaults(self):
         return read_json(self.defaults_file, {})
 
-    def _modify_bootstrap(self, key, transform=None):
+    def _modify_bootstrap(self, key, transform=None, fallback=None):
         if transform is None:
             transform = lambda x: x
 
+        if fallback is None:
+            fallback = []
+
         def outer_transform(bootstrap):
-            bootstrap[key] = sorted(transform(bootstrap.get(key, [])))
+            bootstrap[key] = transform(bootstrap.get(key, fallback))
+            if isinstance(bootstrap[key], list):
+                bootstrap[key] = sorted(bootstrap[key])
             return bootstrap
 
         return modify_json(self.bootstrap_file, outer_transform)
@@ -188,7 +193,8 @@ class Cider(object):
         for formula in formulas:
             if self._modify_bootstrap(
                 "casks" if self.cask else "formulas",
-                transform=transform(formula)
+                transform=transform(formula),
+                fallback=[]
             ):
                 tty.puts("Added {0} to bootstrap".format(formula))
             else:
@@ -206,7 +212,8 @@ class Cider(object):
         for formula in formulas:
             if self._modify_bootstrap(
                 "casks" if self.cask else "formulas",
-                transform=transform(formula)
+                transform=transform(formula),
+                fallback=[]
             ):
                 tty.puts("Removed {0} from bootstrap".format(formula))
             else:
@@ -217,7 +224,8 @@ class Cider(object):
         if tap is not None:
             if self._modify_bootstrap(
                 "taps",
-                transform=lambda x: x + [tap] if tap not in x else x
+                transform=lambda x: x + [tap] if tap not in x else x,
+                fallback=[]
             ):
                 tty.puts("Added {0} tap to bootstrap".format(tap))
             else:
@@ -227,7 +235,8 @@ class Cider(object):
         self.brew.untap(tap)
         if self._modify_bootstrap(
             "taps",
-            transform=lambda xs: [x for x in xs if x != tap]
+            transform=lambda xs: [x for x in xs if x != tap],
+            fallback=[]
         ):
             tty.puts("Removed {0} tap from bootstrap".format(tap))
         else:
@@ -418,25 +427,24 @@ class Cider(object):
             spawn([script], shell=True, debug=self.debug, cwd=self.cider_dir)
 
     def set_icon(self, app, icon):
-        def transform(bootstrap):
-            icons = bootstrap.get("icons", {})
+        def transform(icons):
             icons[app] = icon
-            return bootstrap
+            return icons
 
-        modify_json(self.bootstrap_file, transform)
+        self._modify_bootstrap("icons", transform, {})
         _apply_icon(app, icon)
 
     def remove_icon(self, app):
-        def transform(bootstrap):
-            icons = bootstrap.get("icons", {})
-            del icons[app]
-            return bootstrap
+        def transform(icons):
+            if icons:
+                del icons[app]
+            return icons
 
         app_path = osx.path_for_app(app)
         if not app_path:
             raise AppMissingError("Application not found: '{0}'".format(app))
 
-        modify_json(self.bootstrap_file, transform)
+        self._modify_bootstrap("icons", transform)
         osx.remove_icon(app_path)
 
     def apply_icons(self):

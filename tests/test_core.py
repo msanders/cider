@@ -258,6 +258,37 @@ class TestCiderCore(object):
         with patch("cider._osx.move_to_trash", side_effect=os.remove):
             assert cider.mklink(source, target, force=True)
 
+    @pytest.mark.randomize(defaults=dict_of(str, dict_of(str, str)))
+    def test_apply_defaults(self, tmpdir, debug, verbose, defaults):
+        cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
+        cider.defaults = MagicMock()
+        cider.read_defaults = MagicMock(return_value=defaults)
+        cider.apply_defaults()
+
+        for domain, options in defaults.items():
+            for key, value in options.items():
+                cider.defaults.write.assert_any_call(domain, key, value)
+
+    @pytest.mark.randomize(before=bool, after=bool, bootstrap={
+        "before-scripts": list_of(str),
+        "after-scripts": list_of(str)
+    })
+    def test_run_scripts(self, tmpdir, debug, verbose, before,
+                         after, bootstrap):
+        cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
+        cider.read_bootstrap = MagicMock(return_value=bootstrap)
+        scripts = []
+        scripts += bootstrap.get("before-scripts", []) if before else []
+        scripts += bootstrap.get("after-scripts", []) if after else []
+
+        # TODO: Assert ordering
+        with patch("cider.core.spawn", autospec=True, return_value=0) as spawn:
+            cider.run_scripts(before, after)
+            for script in scripts:
+                spawn.assert_any_call(
+                    [script], shell=True, debug=debug, cwd=cider.cider_dir
+                )
+
 
 def setup_module():
     random.seed()

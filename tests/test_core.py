@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=no-self-use
 from __future__ import absolute_import, print_function, unicode_literals
 from ._lib import random_case, random_str, touch
 from cider import Cider

@@ -8,7 +8,7 @@ def module_attr_re(attr):
 
 
 def grep_attr(body, attr):
-    return str(literal_eval(module_attr_re("version").search(
+    return str(literal_eval(module_attr_re(attr).search(
         body.decode("utf-8")
     ).group(1)))
 

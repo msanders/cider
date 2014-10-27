@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=no-self-use
 from __future__ import absolute_import, print_function, unicode_literals
 from cider import _cli as cli
 from click.testing import CliRunner

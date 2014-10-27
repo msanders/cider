@@ -4,10 +4,14 @@ inherits:
 
 pylint:
   disable:
-    - C0103
-    - C0325
-    - R0913
-    - W0621
+    - invalid-name
+    - pointless-except
+    - redefined-outer-name
+    - too-many-arguments
+    - too-many-instance-attributes
+    - unnecessary-parens
+  enable:
+    - unused-argument
   options:
     generated-members: __globals__
     ignored-modules: pytest

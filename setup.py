@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from ast import literal_eval
 from setuptools import setup, find_packages, Extension
 import re
@@ -8,9 +9,8 @@ def module_attr_re(attr):
 
 
 def grep_attr(body, attr):
-    return str(literal_eval(module_attr_re(attr).search(
-        body.decode("utf-8")
-    ).group(1)))
+    return literal_eval(module_attr_re(attr).search(body).group(1))
+
 
 with open("cider/__init__.py", "r") as f:
     body = f.read()

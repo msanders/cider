@@ -182,14 +182,17 @@ class Cider(object):
         self.run_scripts(after=True)
 
     def install(self, *formulas, **kwargs):
-        # Avoid pylint scoping warning W0640
-        def transform(formula):
-            return lambda x: x + [formula] if formula not in x else x
-
         formulas = list(formulas) or []
         force = kwargs.get("force", False)
 
         self.brew.install(*formulas, force=force)
+        self.add_to_bootstrap(formulas)
+
+    def add_to_bootstrap(self, formulas):
+        # Avoid pylint scoping warning W0640
+        def transform(formula):
+            return lambda x: x + [formula] if formula not in x else x
+
         for formula in formulas:
             if self._modify_bootstrap(
                 "casks" if self.cask else "formulas",
@@ -370,8 +373,7 @@ class Cider(object):
             sys.stdout.write("Add missing items to bootstrap? [y/N] ")
 
             if sys.stdin.read(1).lower() == "y":
-                for formula in missing_items:
-                    self.install(formula)
+                self.add_to_bootstrap(missing_items)
         else:
             print("Everything up to date.")
 

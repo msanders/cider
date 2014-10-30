@@ -172,12 +172,12 @@ def read_json(path, fallback=None):
 
 def modify_json(path, transform):
     contents = read_json(path, {})
-    with open(path, "w") as f:
-        old_contents = contents
-        contents = transform(copy.deepcopy(contents))
-        changed = bool(old_contents != contents)
+    old_contents = contents
+    contents = transform(copy.deepcopy(contents))
+    changed = bool(old_contents != contents)
 
-        if changed:
+    if changed:
+        with open(path, "w") as f:
             json.dump(
                 contents,
                 f,
@@ -186,7 +186,7 @@ def modify_json(path, transform):
                 separators=(',', ': ')
             )
 
-        return changed
+    return changed
 
 
 def write_json(path, contents):

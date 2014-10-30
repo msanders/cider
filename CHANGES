@@ -1,1 +1,10 @@
-v1.0, Oct. 18, 2014 -- Initial release.
+v1.1.1, Oct. 29, 2014
+  - Added support for Python 3
+  - Fixed bug where `cider missing` would sometimes fail to add items to bootstrap
+  - Fixed bug where bootstrap would get overwritten if no changes were made
+
+v1.1, Oct. 25, 2014
+  - Various bug fixes, tests, and stability improvements.
+
+v1.0, Oct. 18, 2014
+  - Initial release.

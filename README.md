@@ -90,6 +90,15 @@ User defaults are stored similarly:
 
 To see how this works out in practice, feel free to take a look at [my dotfiles](https://github.com/msanders/dotfiles).
 
+## Backup your existing setup
+
+To save the state of your existing setup:
+
+    mkdir ~/.cider
+    touch ~/.cider/bootstrap.json
+    cider missing
+    cider cask missing
+
 ## Caveats
 
 There doesn't seem to be a way to re-install purchases made from Mac App Store via the command line just yet, so those have to be done by hand.

@@ -37,7 +37,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Click',
+        'Click>=3.3',
         'rfc3987',
     ],
     entry_points='''

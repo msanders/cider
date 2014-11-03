@@ -38,7 +38,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'Click>=3.3',
-        'rfc3987',
+        'rfc3987>=1.3.4',
     ],
     entry_points='''
         [console_scripts]

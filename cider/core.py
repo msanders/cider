@@ -32,10 +32,15 @@ class Cider(object):
         self.verbose = verbose if verbose is not None else False
         self.brew = Brew(cask, debug, verbose)
         self.defaults = Defaults(debug)
-        self.cider_dir = cider_dir if cider_dir is not None else os.path.join(
-            os.path.expanduser("~"),
-            ".cider"
-        )
+        self.cider_dir = self.fallback_cider_dir() if cider_dir is None else \
+            self.fallback_cider_dir()
+
+    @staticmethod
+    def fallback_cider_dir():
+        try:
+            return os.path.join(os.environ["XDG_CONFIG_HOME"], "cider")
+        except KeyError:
+            return os.path.join(os.path.expanduser("~"), ".cider")
 
     @property
     def symlink_dir(self):
@@ -50,12 +55,20 @@ class Cider(object):
         return os.path.join(self.cider_dir, "defaults.json")
 
     @property
-    def cache_dir(self):
-        return os.path.join(self.cider_dir, ".cache")
+    def support_data_dir(self):
+        try:
+            return os.path.join(os.environ["XDG_DATA_HOME"], "cider")
+        except KeyError:
+            return os.path.join(
+                os.path.expanduser("~"),
+                "Library",
+                "Application Support",
+                "com.msanders.cider"
+            )
 
     @property
     def symlink_targets_file(self):
-        return os.path.join(self.cache_dir, "symlink_targets.json")
+        return os.path.join(self.support_data_dir, "symlink_targets.json")
 
     def read_bootstrap(self):
         return read_json(self.bootstrap_file, {})

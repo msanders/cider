@@ -68,9 +68,9 @@ class Brew(object):
         return self.__spawn("untap", [tap])
 
     def ls(self):
-        return self.__spawn(
+        return [formula for formula in self.__spawn(
             "ls", ["-1"], check_output=True
-        ).strip().split("\n")
+        ).strip().split("\n") if not formula.startswith("==>")]
 
     def uses(self, formula):
         args = ["--installed", "--recursive", formula]

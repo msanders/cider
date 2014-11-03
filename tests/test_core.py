@@ -7,7 +7,6 @@ from cider.exceptions import SymlinkError
 from cider._sh import isdirname
 from pytest import list_of, dict_of
 from glob import iglob
-import errno
 import os
 import pytest
 import random

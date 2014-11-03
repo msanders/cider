@@ -32,7 +32,7 @@ class Cider(object):
         self.verbose = verbose if verbose is not None else False
         self.brew = Brew(cask, debug, verbose)
         self.defaults = Defaults(debug)
-        self.cider_dir = self.fallback_cider_dir() if cider_dir is None else \
+        self.cider_dir = cider_dir if cider_dir is not None else \
             self.fallback_cider_dir()
 
     @staticmethod

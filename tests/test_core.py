@@ -3,7 +3,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from ._lib import random_case, random_str, touch
 from cider import Cider
-from cider.exceptions import BootstrapMissingError, SymlinkError
+from cider.exceptions import SymlinkError
 from cider._sh import isdirname
 from pytest import list_of, dict_of
 from glob import iglob
@@ -52,12 +52,7 @@ class TestBrewCore(object):
             cider = Cider(cask, debug, verbose, cider_dir=str(tmpdir))
             mock.return_value = data
             assert cider.read_bootstrap() == data
-            mock.assert_called_with(cider.bootstrap_file)
-
-            mock.side_effect = IOError(errno.ENOENT, "")
-            with pytest.raises(BootstrapMissingError):
-                cider.read_bootstrap()
-                mock.assert_called_with(cider.bootstrap_file)
+            mock.assert_called_with(cider.bootstrap_file, {})
 
     @pytest.mark.randomize(random_prefix=str, bootstrap={
         "formulas": list_of(str),

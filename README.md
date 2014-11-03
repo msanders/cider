@@ -94,8 +94,6 @@ To see how this works out in practice, feel free to take a look at [my dotfiles]
 
 To save the state of your existing setup:
 
-    mkdir ~/.cider
-    touch ~/.cider/bootstrap.json
     cider missing
     cider cask missing
 

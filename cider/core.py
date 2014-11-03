@@ -4,7 +4,7 @@ from . import _osx as osx
 from . import _tty as tty
 from .exceptions import (
     UnsupportedOSError, XcodeMissingError, BrewMissingError,
-    BootstrapMissingError, SymlinkError, AppMissingError
+    SymlinkError, AppMissingError
 )
 from ._sh import (
     Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p, read_json,
@@ -58,21 +58,17 @@ class Cider(object):
         return os.path.join(self.cache_dir, "symlink_targets.json")
 
     def read_bootstrap(self):
-        try:
-            return read_json(self.bootstrap_file)
-        except IOError as e:
-            if e.errno == errno.ENOENT:
-                raise BootstrapMissingError(
-                    "Bootstrap file not found. Expected at {0}".format(
-                        collapseuser(self.bootstrap_file)
-                    ),
-                    self.bootstrap_file
-                )
-
-            raise e
+        return read_json(self.bootstrap_file, {})
 
     def read_defaults(self):
         return read_json(self.defaults_file, {})
+
+    def _check_cider_dir(self):
+        if not os.path.isdir(self.cider_dir):
+            os.mkdir(self.cider_dir)
+            print(tty.progress("Created cider dir at {0}".format(
+                self.cider_dir
+            )))
 
     def _modify_bootstrap(self, key, transform=None, fallback=None):
         if transform is None:
@@ -87,6 +83,7 @@ class Cider(object):
                 bootstrap[key] = sorted(bootstrap[key])
             return bootstrap
 
+        self._check_cider_dir()
         return modify_json(self.bootstrap_file, outer_transform)
 
     def _modify_defaults(self, domain, transform):
@@ -94,12 +91,14 @@ class Cider(object):
             defaults[domain] = transform(defaults.get(domain, {}))
             return defaults
 
+        self._check_cider_dir()
         return modify_json(self.defaults_file, outer_transform)
 
     def _cached_targets(self):
         return read_json(self.symlink_targets_file, [])
 
     def _update_target_cache(self, new_targets):
+        self._check_cider_dir()
         mkdir_p(os.path.dirname(self.symlink_targets_file))
         write_json(self.symlink_targets_file, sorted(new_targets))
 

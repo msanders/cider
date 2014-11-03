@@ -31,12 +31,6 @@ class BrewMissingError(CiderException):
         self.url = url
 
 
-class BootstrapMissingError(CiderException):
-    def __init__(self, message, path, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
-        self.path = path
-
-
 class SymlinkError(CiderException):
     pass
 

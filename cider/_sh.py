@@ -141,7 +141,8 @@ def mkdir_p(path):
 def collapseuser(path):
     home_dir = os.environ.get("HOME", pwd.getpwuid(os.getuid()).pw_dir)
     if os.path.samefile(home_dir, commonpath([path, home_dir])):
-        return os.path.join("~", os.path.relpath(path, home_dir))
+        relpath = os.path.relpath(path, home_dir)
+        return os.path.join("~", relpath) if relpath != "." else "~"
     return path
 
 

@@ -111,20 +111,20 @@ class TestCiderCLI(object):
             ("remove-icon", "remove_icon"), [app], debug=debug, verbose=verbose
         )
 
-    def apply_icons(self, debug, verbose):
+    def test_apply_icons(self, debug, verbose):
         _test_command(
             ("apply-icons", "apply_icons"), debug=debug, verbose=verbose
         )
 
-    def run_scripts(self, debug, verbose):
+    def test_run_scripts(self, debug, verbose):
         _test_command(
             ("run-scripts", "run_scripts"), debug=debug, verbose=verbose
         )
 
-    def restore(self, debug, verbose):
+    def test_restore(self, debug, verbose):
         _test_command("restore", debug=debug, verbose=verbose)
 
-    def relink(self, debug, verbose):
+    def test_relink(self, debug, verbose):
         _test_command("relink", debug=debug, verbose=verbose)
 
     @staticmethod

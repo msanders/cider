@@ -213,11 +213,11 @@ def run_scripts(cider):
 
 
 @cli.command("stow")
-@click.argument("path")
 @click.argument("name")
+@click.argument("item")
 @click.pass_obj
-def stow(cider, path, name):
-    cider.stow(path, name)
+def stow(cider, name, item):
+    cider.stow(name, item)
 
 
 @cli.command("unstow")

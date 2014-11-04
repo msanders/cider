@@ -289,10 +289,10 @@ class TestCiderCore(object):
 
         # StowError should be raised if source does not exist.
         with pytest.raises(StowError):
-            cider.stow(source, name)
+            cider.stow(name, source)
 
         touch(source)
-        cider.stow(source, name)
+        cider.stow(name, source)
         assert os.path.isdir(stow_dir)
         assert os.path.isfile(stow)
         assert os.path.islink(source)

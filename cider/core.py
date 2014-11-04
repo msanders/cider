@@ -530,7 +530,7 @@ class Cider(object):
 
         return self._modify_bootstrap("symlinks", transform)
 
-    def stow(self, path, name):
+    def stow(self, name, path):
         stow_path = os.path.join(self.symlink_dir, name)
         stow_fpath = os.path.join(stow_path, os.path.basename(path))
         if not os.path.exists(path):

@@ -129,7 +129,7 @@ class TestCiderCLI(object):
 
     @pytest.mark.randomize(source=str, name=str, min_length=1)
     def test_stow(self, debug, verbose, source, name):
-        _test_command("stow", [source, name], debug=debug, verbose=verbose)
+        _test_command("stow", [name, source], debug=debug, verbose=verbose)
 
     @pytest.mark.randomize(name=str, min_length=1)
     def test_unstow(self, debug, verbose, name):

@@ -5,6 +5,7 @@ from .core import Cider
 from subprocess import CalledProcessError
 from webbrowser import open as urlopen
 import click
+import os
 import sys
 
 from .exceptions import (
@@ -210,6 +211,21 @@ def apply_icons(cider):
 @click.pass_obj
 def run_scripts(cider):
     cider.run_scripts(before=True, after=True)
+
+
+@cli.command("stow")
+@click.argument("path")
+@click.argument("name")
+@click.pass_obj
+def stow(cider, path, name):
+    cider.stow(path, name)
+
+
+@cli.command("unstow")
+@click.argument("name")
+@click.pass_obj
+def unstow(cider, name):
+    cider.unstow(name)
 
 
 def main():

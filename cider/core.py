@@ -4,7 +4,7 @@ from . import _osx as osx
 from . import _tty as tty
 from .exceptions import (
     UnsupportedOSError, XcodeMissingError, BrewMissingError,
-    SymlinkError, AppMissingError
+    SymlinkError, AppMissingError, StowError
 )
 from ._sh import (
     Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p, read_json,
@@ -18,6 +18,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 
@@ -129,6 +130,19 @@ class Cider(object):
                     collapseuser(target))
                 ))
 
+    @staticmethod
+    def _remove_link_target(source, target):
+        if os.path.exists(target):
+            if os.path.samefile(os.path.realpath(target),
+                                os.path.realpath(source)):
+                os.remove(target)
+            else:
+                raise SymlinkError(
+                    "{0} symlink target already exists at: {1}".format(
+                        source, target
+                    )
+                )
+
     def _assert_requirements(self):
         macos_version = platform.mac_ver()[0]
 
@@ -149,6 +163,10 @@ class Cider(object):
                 "Homebrew not installed",
                 "http://brew.sh/#install"
             )
+
+    @staticmethod
+    def _isstow(symlink, stow):
+        return symlink == stow or symlink.startswith(os.path.join(stow, ""))
 
     def restore(self):
         self._assert_requirements()
@@ -264,6 +282,24 @@ class Cider(object):
             return os.path.join(expanded, os.path.basename(source))
         return expanded
 
+    def expandtargets(self, source_glob, target):
+        if not isdirname(target) and ("*" in source_glob or
+                                      "?" in source_glob):
+            raise SymlinkError(
+                "Invalid symlink: {0} => {1} (did you mean to add a "
+                "trailing '/'?)".format(source_glob, target)
+            )
+
+        mkdir_p(os.path.dirname(os.path.expanduser(target)))
+        sources = iglob(os.path.join(self.symlink_dir, source_glob))
+        expanded = []
+        for source in sources:
+            source = os.path.join(self.cider_dir, source)
+            source_target = self.expandtarget(source, target)
+
+            expanded.append((source, source_target))
+        return expanded
+
     def relink(self, force=None):
         force = force if force is not None else False
         symlinks = self.read_bootstrap().get("symlinks", {})
@@ -271,21 +307,10 @@ class Cider(object):
         new_targets = []
 
         for source_glob, target in symlinks.items():
-            if not isdirname(target) and ("*" in source_glob or
-                                          "?" in source_glob):
-                raise SymlinkError(
-                    "Invalid symlink: {0} => {1} (did you mean to add a "
-                    "trailing '/'?)".format(source_glob, target)
-                )
-
-            mkdir_p(os.path.dirname(os.path.expanduser(target)))
-            sources = iglob(os.path.join(self.symlink_dir, source_glob))
-            for source in sources:
-                source = os.path.join(self.cider_dir, source)
-                source_target = self.expandtarget(source, target)
-
-                if self.mklink(source, source_target, force):
-                    new_targets.append(source_target)
+            for source, expanded_target in self.expandtargets(source_glob,
+                                                              target):
+                if self.mklink(source, expanded_target, force):
+                    new_targets.append(expanded_target)
 
         self._remove_dead_targets(set(old_targets) - set(new_targets))
         self._update_target_cache(new_targets)
@@ -468,6 +493,76 @@ class Cider(object):
             _apply_icon(app, icon)
 
         tty.puts("Applied icons")
+
+    def add_symlink(self, name, target):
+        target = collapseuser(os.path.normpath(target))
+
+        # Add trailing slash for globbing.
+        if target != "~":
+            target = os.path.join(target, "")
+
+        def transform(symlinks):
+            for key in symlinks:
+                if self._isstow(key, name):
+                    return symlinks
+
+            symlinks["{0}/.*".format(name)] = target
+            return symlinks
+
+        return self._modify_bootstrap("symlinks", transform, {})
+
+    def remove_symlink(self, name):
+        def transform(symlinks):
+            if symlinks:
+                for key in symlinks.keys():
+                    if self._isstow(key, name):
+                        del symlinks[key]
+
+            return symlinks
+
+        return self._modify_bootstrap("symlinks", transform)
+
+    def stow(self, path, name):
+        stow_path = os.path.join(self.symlink_dir, name)
+        stow_fpath = os.path.join(stow_path, os.path.basename(path))
+        if not os.path.exists(path):
+            raise StowError("Can't stow {0}: No such file or directory".format(
+                collapseuser(path)
+            ))
+
+        samefile = os.path.exists(stow_fpath) and os.path.samefile(
+            os.path.realpath(stow_fpath), os.path.realpath(path)
+        )
+
+        if os.path.exists(stow_fpath) and not samefile:
+            raise StowError("Stow already exists at {0}".format(
+                stow_fpath
+            ))
+
+        if not samefile:
+            mkdir_p(stow_path)
+            shutil.move(path, stow_path)
+        self.add_symlink(name, os.path.dirname(path))
+        self.mklink(stow_fpath, path)
+
+    def unstow(self, name):
+        symlinks = self.read_bootstrap().get("symlinks", {})
+
+        found = False
+        for source_glob, target in symlinks.items():
+            if self._isstow(source_glob, name):
+                found = True
+                for source, target in self.expandtargets(source_glob, target):
+                    self._remove_link_target(source, target)
+                    shutil.move(source, target)
+                    tty.puts("Moved {0} -> {1}".format(
+                        collapseuser(source),
+                        collapseuser(target)
+                    ))
+
+        if not found:
+            raise StowError("No stow found with name: {0}".format(name))
+        self.remove_symlink(name)
 
 
 def _apply_icon(app, icon):

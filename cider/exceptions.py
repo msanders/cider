@@ -37,3 +37,7 @@ class SymlinkError(CiderException):
 
 class AppMissingError(CiderException):
     pass
+
+
+class StowError(CiderException):
+    pass

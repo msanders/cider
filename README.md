@@ -1,6 +1,6 @@
-[![PyPi version](https://pypip.in/version/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
-[![PyPi downloads](https://pypip.in/status/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
-[![PyPi status](https://pypip.in/download/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
+[![PyPI version](https://pypip.in/version/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
+[![PyPI downloads](https://pypip.in/status/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
+[![PyPI status](https://pypip.in/download/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
 
 ## Start with a clean slate
 

@@ -3,6 +3,13 @@ from ast import literal_eval
 from setuptools import setup, find_packages, Extension
 import re
 
+def convert_md(source):
+    try:
+        from pypandoc import convert
+        return convert(source, "rst", format="md", encoding="utf8")
+    except (ImportError, OSError):
+        return source
+
 
 def module_attr_re(attr):
     return re.compile(r'__{0}__\s*=\s*(.*)'.format(attr))
@@ -10,6 +17,11 @@ def module_attr_re(attr):
 
 def grep_attr(body, attr):
     return literal_eval(module_attr_re(attr).search(body).group(1))
+
+
+def read_description():
+    with open("README.md") as f:
+        return convert_md(re.sub(r'.*\bPyPI\b.*', "", f.read())).strip()
 
 
 with open("cider/__init__.py", "r") as f:
@@ -46,9 +58,11 @@ setup(
         cyder=cider._cli:main
     ''',
     description='Hassle-free bootstrapping using Homebrew.',
+    long_description=read_description(),
     license='MIT',
     ext_modules=[ext],
     platforms=["osx"],
+    keywords=["cider", "homebrew", "bootstrap", "automation"],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',

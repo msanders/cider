@@ -127,6 +127,14 @@ class TestCiderCLI(object):
     def test_relink(self, debug, verbose):
         _test_command("relink", debug=debug, verbose=verbose)
 
+    @pytest.mark.randomize(source=str, name=str, min_length=1)
+    def test_stow(self, debug, verbose, source, name):
+        _test_command("stow", [source, name], debug=debug, verbose=verbose)
+
+    @pytest.mark.randomize(name=str, min_length=1)
+    def test_unstow(self, debug, verbose, name):
+        _test_command("unstow", [name], debug=debug, verbose=verbose)
+
     @staticmethod
     def __global_domain_params(name, key):
         return "NSGlobalDomain", name, key

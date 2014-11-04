@@ -3,7 +3,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from ._lib import random_case, random_str, touch
 from cider import Cider
-from cider.exceptions import SymlinkError
+from cider.exceptions import SymlinkError, StowError
 from cider._sh import isdirname
 from pytest import list_of, dict_of
 from glob import iglob
@@ -230,7 +230,7 @@ class TestCiderCore(object):
                     assert not os.path.exists(dead_target)
 
                 new_cache = cider._cached_targets()  # pylint:disable=W0212
-                assert new_targets == set(new_cache).intersection(new_targets)
+                assert new_targets == set(new_cache) & new_targets
 
     def test_mklink(self, tmpdir, debug, verbose):
         cider = Cider(
@@ -260,6 +260,99 @@ class TestCiderCore(object):
         # Should allow removing existing target with --force.
         with patch("cider._osx.move_to_trash", side_effect=os.remove):
             assert cider.mklink(source, target, force=True)
+
+    @pytest.mark.randomize(name=str, min_length=1)
+    def test_stow(self, tmpdir, debug, verbose, name):
+        """
+        Tests that:
+        1. Stow directory is created & file is moved there.
+        2. Symlink is created.
+        3. Symlink is added to bootstrap.
+        4. Cache is updated with new target.
+
+        Expected errors:
+        - StowError is raised if target does not exist.
+        - StowError is raised if stow already exists.
+        """
+        cider = Cider(
+            False, debug, verbose,
+            cider_dir=str(tmpdir),
+            support_dir=str(tmpdir.join(".cache"))
+        )
+        cider.add_symlink = MagicMock()
+
+        source = os.path.abspath(str(tmpdir.join(random_str(min_length=1))))
+        basename = os.path.basename(source)
+
+        stow_dir = os.path.abspath(os.path.join(cider.symlink_dir, name))
+        stow = os.path.join(stow_dir, basename)
+
+        # StowError should be raised if source does not exist.
+        with pytest.raises(StowError):
+            cider.stow(source, name)
+
+        touch(source)
+        cider.stow(source, name)
+        assert os.path.isdir(stow_dir)
+        assert os.path.isfile(stow)
+        assert os.path.islink(source)
+        assert os.path.samefile(
+            os.path.realpath(stow), os.path.realpath(source)
+        )
+
+        cider.add_symlink.assert_called_with(name, source)
+        new_cache = cider._cached_targets()  # pylint:disable=W0212
+        assert source in new_cache
+
+        # StowError should be raised if source already exists.
+        os.remove(source)
+        touch(source)
+        with pytest.raises(StowError):
+            cider.stow(source, name)
+
+    @pytest.mark.randomize(name=str, stows=list_of(str), min_length=1)
+    def test_unstow(self, tmpdir, debug, verbose, name, stows):
+        """
+        Tests that:
+        1. Each stow is moved back to its original location.
+        2. Symlinks are removed from bootstrap.
+        3. Cache is updated with targets removed.
+        4. Stow directory is removed if empty.
+
+        Expected errors:
+        - StowError is raised if no stow was found.
+        - SymlinkError is raised if target already exists.
+        """
+        cider = Cider(
+            False, debug, verbose,
+            cider_dir=str(tmpdir.join("cider")),
+            support_dir=str(tmpdir.join("cider", ".cache"))
+        )
+        cider.remove_symlink = MagicMock()
+
+        stow_dir = os.path.abspath(os.path.join(cider.symlink_dir, name))
+        os.makedirs(stow_dir)
+        for stow in stows:
+            source = os.path.join(stow_dir, stow)
+            target = str(tmpdir.join(stow))
+            touch(source)
+            os.symlink(source, target)
+            cider.add_symlink(name, target)
+
+        print(cider.read_bootstrap())
+        cider.unstow(name)
+
+        new_cache = cider._cached_targets()  # pylint:disable=W0212
+        for stow in stows:
+            source = os.path.join(stow_dir, stow)
+            target = str(tmpdir.join(stow))
+            assert os.path.exists(target)
+            assert not os.path.islink(target)
+            assert not os.path.exists(source)
+            assert target not in new_cache
+
+        cider.remove_symlink.assert_called_with(name)
+        assert not os.path.exists(stow_dir)
 
     @pytest.mark.randomize(defaults=dict_of(str, dict_of(str, str)))
     def test_apply_defaults(self, tmpdir, debug, verbose, defaults):

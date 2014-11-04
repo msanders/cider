@@ -10,9 +10,10 @@ from ._sh import (
     Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p, read_json,
     write_json, modify_json, isdirname
 )
+from fnmatch import fnmatch
+from glob import iglob
 from rfc3987 import parse as urlparse
 from tempfile import mkdtemp
-from glob import iglob
 import errno
 import json
 import os
@@ -390,7 +391,7 @@ class Cider(object):
 
         def brew_orphan(formula):
             uses = self.brew.uses(formula)
-            return len(set(installed).intersection(set(uses))) == 0
+            return len(set(installed) & set(uses)) == 0
 
         return sorted(filter(brew_orphan, set(brewed) - set(installed)))
 
@@ -499,17 +500,21 @@ class Cider(object):
 
     def add_symlink(self, name, target):
         target = collapseuser(os.path.normpath(target))
+        target_dir = os.path.dirname(target)
 
         # Add trailing slash for globbing.
-        if target != "~":
-            target = os.path.join(target, "")
+        if target_dir != "~":
+            target_dir = os.path.join(target_dir, "")
 
         def transform(symlinks):
             for key in symlinks:
-                if self._isstow(key, name):
+                if (os.path.dirname(key) == name and
+                   fnmatch(os.path.basename(target), os.path.basename(key))):
                     return symlinks
 
-            symlinks["{0}/.*".format(name)] = target
+            dotted = os.path.basename(target).startswith(".")
+            pattern = "{0}/{1}*".format(name, "." if dotted else "")
+            symlinks[pattern] = target_dir
             return symlinks
 
         return self._modify_bootstrap("symlinks", transform, {})
@@ -545,18 +550,23 @@ class Cider(object):
         if not samefile:
             mkdir_p(stow_path)
             shutil.move(path, stow_path)
-        self.add_symlink(name, os.path.dirname(path))
-        self.mklink(stow_fpath, path)
+
+        target = os.path.abspath(path)
+        self.add_symlink(name, target)
+        self.mklink(stow_fpath, target)
+        self._update_target_cache(self._cached_targets() + [target])
 
     def unstow(self, name):
         symlinks = self.read_bootstrap().get("symlinks", {})
 
+        removed_targets = set()
         found = False
         for source_glob, target in symlinks.items():
             if self._isstow(source_glob, name):
                 found = True
                 for source, target in self.expandtargets(source_glob, target):
                     self._remove_link_target(source, target)
+                    removed_targets.add(target)
                     shutil.move(source, target)
                     tty.puts("Moved {0} -> {1}".format(
                         collapseuser(source),
@@ -565,7 +575,17 @@ class Cider(object):
 
         if not found:
             raise StowError("No stow found with name: {0}".format(name))
+
+        try:
+            os.rmdir(os.path.join(self.symlink_dir, name))
+        except OSError as e:
+            if e.errno != errno.ENOTEMPTY:
+                raise e
+
         self.remove_symlink(name)
+        self._update_target_cache(
+            set(self._cached_targets()) - removed_targets
+        )
 
 
 def _apply_icon(app, icon):

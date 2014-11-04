@@ -203,7 +203,11 @@ class TestCiderCore(object):
                 symkey(outerdir, path): symvalue(targetdir, "a/b/d"),
             }
 
-        cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
+        cider = Cider(
+            False, debug, verbose,
+            cider_dir=str(tmpdir),
+            support_dir=str(tmpdir.join(".cache"))
+        )
         cider.mklink = MagicMock(return_value=True)
 
         for srcglob, target in generate_symlinks().items():
@@ -229,7 +233,11 @@ class TestCiderCore(object):
                 assert new_targets == set(new_cache).intersection(new_targets)
 
     def test_mklink(self, tmpdir, debug, verbose):
-        cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
+        cider = Cider(
+            False, debug, verbose,
+            cider_dir=str(tmpdir),
+            support_dir=str(tmpdir.join(".cache"))
+        )
         source = str(tmpdir.join(random_str(min_length=1)))
         target = str(tmpdir.join(random_str(min_length=1)))
 

@@ -27,7 +27,8 @@ _DEFAULTS_FALSE_RE = re.compile(r"\b(N(O)?|FALSE)\b", re.I)
 
 
 class Cider(object):
-    def __init__(self, cask=None, debug=None, verbose=None, cider_dir=None):
+    def __init__(self, cask=None, debug=None, verbose=None, cider_dir=None,
+                 support_dir=None):
         self.cask = cask if cask is not None else False
         self.debug = debug if debug is not None else False
         self.verbose = verbose if verbose is not None else False
@@ -35,13 +36,8 @@ class Cider(object):
         self.defaults = Defaults(debug)
         self.cider_dir = cider_dir if cider_dir is not None else \
             self.fallback_cider_dir()
-
-    @staticmethod
-    def fallback_cider_dir():
-        try:
-            return os.path.join(os.environ["XDG_CONFIG_HOME"], "cider")
-        except KeyError:
-            return os.path.join(os.path.expanduser("~"), ".cider")
+        self.support_dir = support_dir if support_dir is not None else \
+            self.fallback_support_dir()
 
     @property
     def symlink_dir(self):
@@ -55,8 +51,15 @@ class Cider(object):
     def defaults_file(self):
         return os.path.join(self.cider_dir, "defaults.json")
 
-    @property
-    def support_data_dir(self):
+    @staticmethod
+    def fallback_cider_dir():
+        try:
+            return os.path.join(os.environ["XDG_CONFIG_HOME"], "cider")
+        except KeyError:
+            return os.path.join(os.path.expanduser("~"), ".cider")
+
+    @staticmethod
+    def fallback_support_dir():
         try:
             return os.path.join(os.environ["XDG_DATA_HOME"], "cider")
         except KeyError:
@@ -69,7 +72,7 @@ class Cider(object):
 
     @property
     def symlink_targets_file(self):
-        return os.path.join(self.support_data_dir, "symlink_targets.json")
+        return os.path.join(self.support_dir, "symlink_targets.json")
 
     def read_bootstrap(self):
         return read_json(self.bootstrap_file, {})

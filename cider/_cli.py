@@ -5,7 +5,6 @@ from .core import Cider
 from subprocess import CalledProcessError
 from webbrowser import open as urlopen
 import click
-import os
 import sys
 
 from .exceptions import (

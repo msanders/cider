@@ -25,7 +25,8 @@ def read_description():
     with open("README.md") as f:
         footer = "For more information, see the [GitHub Repository]" \
                  "({0}).".format(REPO_URL)
-        contents = re.sub(r'.*\bPyPI\b.*', "", f.read()) + "\n" + footer
+        filter_re = re.compile(r'.*\b(PyPI|Bitdeli)\b.*')
+        contents = filter_re.sub("", f.read()) + "\n" + footer
         return convert_md(contents).strip()
 
 

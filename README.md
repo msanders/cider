@@ -1,6 +1,7 @@
 [![PyPI version](https://pypip.in/version/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
 [![PyPI downloads](https://pypip.in/status/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
 [![PyPI status](https://pypip.in/download/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/msanders/cider/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
 
 ## Start with a clean slate
 

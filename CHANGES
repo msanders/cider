@@ -1,7 +1,19 @@
+v1.1.2, Nov. 4, 2014
+  - Fixed bug where Homebrew's debug output wasn't getting ignored in
+    `brew missing`.
+  - The bootstrap file and cider directory are now created automatically if
+    they do not exist.
+  - The location of the cider directory can now be changed according to the
+    XDG basedir spec.
+  - Cider's support directory is now located in ~/Library/Application Support
+    by default instead of ~/.cider/.cache.
+  - Added the stow & unstow commands.
+
 v1.1.1, Oct. 29, 2014
-  - Added support for Python 3
-  - Fixed bug where `cider missing` would sometimes fail to add items to bootstrap
-  - Fixed bug where bootstrap would get overwritten if no changes were made
+  - Added support for Python 3.
+  - Fixed bug where `cider missing` would sometimes fail to add items i
+    to bootstrap.
+  - Fixed bug where bootstrap would get overwritten if no changes were made.
 
 v1.1, Oct. 25, 2014
   - Various bug fixes, tests, and stability improvements.

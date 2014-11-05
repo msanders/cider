@@ -70,11 +70,8 @@ class TestBrewCore(object):
                 x for x in installed if not prefix or x.startswith(prefix)
             ]
 
-    @pytest.mark.randomize(
-        installed=list_of(str),
-        brewed=list_of(str),
-        min_length=1
-    )
+    @pytest.mark.randomize(installed=list_of(str), brewed=list_of(str),
+                           min_length=1)
     def test_missing(self, tmpdir, cask, debug, verbose,
                      installed, brewed):
         orphans = []
@@ -383,6 +380,16 @@ class TestCiderCore(object):
                 spawn.assert_any_call(
                     [script], shell=True, debug=debug, cwd=cider.cider_dir
                 )
+
+    @pytest.mark.randomize(installed=list_of(str), brewed=list_of(str),
+                           min_length=1)
+    def test_missing_taps(self, tmpdir, debug, verbose, installed, brewed):
+        cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
+        cider.brew = MagicMock()
+        cider.brew.tap = MagicMock(return_value="\n".join(brewed))
+
+        missing = set(brewed) - set(installed)
+        assert cider.missing_taps() == sorted(missing)
 
 
 def setup_module():

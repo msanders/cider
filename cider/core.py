@@ -257,11 +257,20 @@ class Cider(object):
                 tty.puterr("{0} not found in bootstrap".format(formula))
 
     def tap(self, tap):
-        self.brew.tap(tap)
-        if tap is not None:
+        if tap is None:
+            sys.stdout.write("\n".join(self.tapped()))
+        else:
+            self.brew.tap(tap)
+            self.add_taps([tap])
+
+    def add_taps(self, taps):
+        def transform(tap):
+            return lambda x: x + [tap] if tap not in x else x
+
+        for tap in taps:
             if self._modify_bootstrap(
                 "taps",
-                transform=lambda x: x + [tap] if tap not in x else x,
+                transform=transform(tap),
                 fallback=[]
             ):
                 tty.puts("Added {0} tap to bootstrap".format(tap))
@@ -385,6 +394,9 @@ class Cider(object):
             return [x for x in formulas if x.startswith(prefix)]
         return formulas
 
+    def tapped(self):
+        return self.read_bootstrap().get("taps", [])
+
     def missing(self):
         installed = [item.split()[0].strip() for item in self.installed()]
         brewed = self.brew.ls()
@@ -394,6 +406,11 @@ class Cider(object):
             return len(set(installed) & set(uses)) == 0
 
         return sorted(filter(brew_orphan, set(brewed) - set(installed)))
+
+    def missing_taps(self):
+        bootstrapped = self.tapped()
+        brewed = self.brew.tap().strip().split("\n")
+        return sorted(set(brewed) - set(bootstrapped))
 
     def ls(self, formula):
         formulas = self.installed(formula)
@@ -411,14 +428,27 @@ class Cider(object):
             tty.puterr(fmt.format(len(missing_items), suffix), warning=True)
 
             print("\n".join(missing_items) + "\n")
-            sys.stdout.write("Add missing items to bootstrap? [y/N] ")
+            sys.stdout.write("Add to bootstrap? [y/N] ")
 
             if sys.stdin.read(1).lower() == "y":
                 self.add_to_bootstrap(missing_items)
         else:
             print("Everything up to date.")
 
-        return missing_items
+    def list_missing_taps(self):
+        missing_taps = self.missing_taps()
+        if missing_taps:
+            suffix = "s" if len(missing_taps) != 1 else ""
+            fmt = "{0} missing tap{1}"
+            tty.puterr(fmt.format(len(missing_taps), suffix), warning=True)
+
+            print("\n".join(missing_taps) + "\n")
+            sys.stdout.write("Add to bootstrap? [y/N] ")
+
+            if sys.stdin.read(1).lower() == "y":
+                self.add_taps(missing_taps)
+        else:
+            print("Everything up to date.")
 
     @staticmethod
     def json_value(value):

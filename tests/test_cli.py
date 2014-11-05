@@ -49,6 +49,14 @@ class TestBrewCLI(object):
 
 @pytest.mark.randomize(debug=bool, verbose=bool)
 class TestCiderCLI(object):
+    @pytest.mark.randomize(tap=str)
+    def test_tap(self, debug, verbose, tap):
+        _test_command("tap", [tap], debug=debug, verbose=verbose)
+
+    def test_tap_missing(self, debug, verbose):
+        _test_command(("tap missing", "list_missing_taps"),
+                      debug=debug, verbose=verbose)
+
     @pytest.mark.randomize(
         name=str, key=str, value=str, globaldomain=bool, force=bool
     )

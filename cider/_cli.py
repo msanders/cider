@@ -25,6 +25,7 @@ class CLI(click.Group):
             "{0} [cask] rm FORMULA...",
             "{0} [cask] list [FORMULA]",
             "{0} [cask] missing",
+            "{0} tap missing",
             "{0} set-default [-g] NAME KEY VALUE",
             "{0} remove-default [-g] NAME KEY",
             "{0} apply-defaults",
@@ -120,7 +121,10 @@ def rm(cider, formulas):
 @click.argument("tap", required=False)
 @click.pass_obj
 def tap(cider, tap):
-    cider.tap(tap)
+    if tap == "missing":
+        cider.list_missing_taps()
+    else:
+        cider.tap(tap)
 
 
 @cli.command()

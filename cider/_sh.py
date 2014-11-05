@@ -59,9 +59,10 @@ class Brew(object):
         cmd = "rm" if not self.cask else "zap"
         return self.__spawn(cmd, args)
 
-    def tap(self, tap):
+    def tap(self, tap=None):
         self.__assert_no_cask(__name__)
-        return self.__spawn("tap", [tap] if tap is not None else [])
+        return self.__spawn("tap", [tap] if tap is not None else [],
+                            check_output=tap is None)
 
     def untap(self, tap):
         self.__assert_no_cask(__name__)

@@ -411,7 +411,7 @@ class Cider(object):
 
     def missing_taps(self):
         bootstrapped = self.tapped()
-        brewed = self.brew.tap().strip().split("\n")
+        brewed = self.brew.tap().strip().splitlines()
         return sorted(set(brewed) - set(bootstrapped))
 
     def ls(self, formula):

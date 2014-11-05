@@ -104,7 +104,7 @@ Cider supports the following commands to manage symlinks (inspired in part by [G
     cider stow [NAME] [ITEM]
     cider relink # (automatically invoked by restore)
 
-For example, `cider stow ~/.gitconfig git` will move `~/.gitconfig` to `~/.cider/symlinks/git/.gitconfig`, create a link back to the original location, and add an entry to your bootstrap denoting this:
+For example, `cider stow ~/.gitconfig git` will move `~/.gitconfig` to `~/.cider/symlinks/git/`, create a link back to its original location, and add an entry to your bootstrap denoting this:
 
     "symlinks": {
         "git/.*": "~"
@@ -112,7 +112,7 @@ For example, `cider stow ~/.gitconfig git` will move `~/.gitconfig` to `~/.cider
 
 To undo this change, simply run `cider unstow git`.
 
-Directories are automatically expanded, so the entry `"bin/*": "~/bin/"` will first create the directory `~/bin` if it doesn't already exist, and then link all items in `symlinks/bin` to targets in that directory.
+Directories are automatically expanded, so the entry `"bin/*": "~/bin/"` will first create the directory `~/bin` if it doesn't exist already, and then link all items in `symlinks/bin` to children of that directory.
 
 ## Caveats
 

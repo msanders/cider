@@ -36,6 +36,8 @@ class CLI(click.Group):
             "{0} relink",
             "{0} addlink",
             "{0} unlink"
+            "{0} stow NAME ITEM",
+            "{0} unstow NAME"
         ]
 
         basename = ctx.command_path

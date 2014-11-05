@@ -3,6 +3,8 @@ from ast import literal_eval
 from setuptools import setup, find_packages, Extension
 import re
 
+REPO_URL = "https://github.com/msanders/cider"
+
 def convert_md(source):
     try:
         from pypandoc import convert
@@ -21,7 +23,10 @@ def grep_attr(body, attr):
 
 def read_description():
     with open("README.md") as f:
-        return convert_md(re.sub(r'.*\bPyPI\b.*', "", f.read())).strip()
+        footer = "For more information, see the [GitHub Repository]" \
+                 "({0}).".format(REPO_URL)
+        contents = re.sub(r'.*\bPyPI\b.*', "", f.read()) + "\n" + footer
+        return convert_md(contents).strip()
 
 
 with open("cider/__init__.py", "r") as f:
@@ -45,7 +50,7 @@ setup(
     author=author,
     author_email='michael [at] msanders [dot] com',
     version=version,
-    url='https://github.com/msanders/cider',
+    url=REPO_URL,
     packages=find_packages(),
     include_package_data=True,
     install_requires=[

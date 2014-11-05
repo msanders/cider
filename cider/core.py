@@ -258,7 +258,9 @@ class Cider(object):
 
     def tap(self, tap):
         if tap is None:
-            sys.stdout.write("\n".join(self.tapped()))
+            tapped = self.tapped()
+            if tapped:
+                print("\n".join(tapped))
         else:
             self.brew.tap(tap)
             self.add_taps([tap])

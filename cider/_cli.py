@@ -33,7 +33,9 @@ class CLI(click.Group):
             "{0} apply-icons",
             "{0} run-scripts",
             "{0} restore",
-            "{0} relink"
+            "{0} relink",
+            "{0} addlink",
+            "{0} unlink"
         ]
 
         basename = ctx.command_path
@@ -212,19 +214,19 @@ def run_scripts(cider):
     cider.run_scripts(before=True, after=True)
 
 
-@cli.command("stow")
+@cli.command("addlink")
 @click.argument("name")
 @click.argument("item")
 @click.pass_obj
-def stow(cider, name, item):
-    cider.stow(name, item)
+def addlink(cider, name, item):
+    cider.addlink(name, item)
 
 
-@cli.command("unstow")
+@cli.command("unlink")
 @click.argument("name")
 @click.pass_obj
-def unstow(cider, name):
-    cider.unstow(name)
+def unlink(cider, name):
+    cider.unlink(name)
 
 
 def main():

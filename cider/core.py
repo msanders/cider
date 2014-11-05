@@ -143,7 +143,7 @@ class Cider(object):
             else:
                 raise SymlinkError(
                     "{0} symlink target already exists at: {1}".format(
-                        source, target
+                        collapseuser(source), collapseuser(target)
                     )
                 )
 
@@ -530,11 +530,11 @@ class Cider(object):
 
         return self._modify_bootstrap("symlinks", transform)
 
-    def stow(self, name, path):
+    def addlink(self, name, path):
         stow_path = os.path.join(self.symlink_dir, name)
         stow_fpath = os.path.join(stow_path, os.path.basename(path))
         if not os.path.exists(path):
-            raise StowError("Can't stow {0}: No such file or directory".format(
+            raise StowError("Can't link {0}: No such file or directory".format(
                 collapseuser(path)
             ))
 
@@ -543,8 +543,8 @@ class Cider(object):
         )
 
         if os.path.exists(stow_fpath) and not samefile:
-            raise StowError("Stow already exists at {0}".format(
-                stow_fpath
+            raise StowError("Link already exists at {0}".format(
+                collapseuser(stow_fpath)
             ))
 
         if not samefile:
@@ -556,7 +556,7 @@ class Cider(object):
         self.mklink(stow_fpath, target)
         self._update_target_cache(self._cached_targets() + [target])
 
-    def unstow(self, name):
+    def unlink(self, name):
         symlinks = self.read_bootstrap().get("symlinks", {})
 
         removed_targets = set()
@@ -568,13 +568,13 @@ class Cider(object):
                     self._remove_link_target(source, target)
                     removed_targets.add(target)
                     shutil.move(source, target)
-                    tty.puts("Moved {0} -> {1}".format(
+                    print(tty.progress("Moved {0} -> {1}".format(
                         collapseuser(source),
                         collapseuser(target)
-                    ))
+                    )))
 
         if not found:
-            raise StowError("No stow found with name: {0}".format(name))
+            raise StowError("No symlink found with name: {0}".format(name))
 
         try:
             os.rmdir(os.path.join(self.symlink_dir, name))

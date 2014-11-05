@@ -7,7 +7,7 @@ v1.1.2, Nov. 4, 2014
     XDG basedir spec.
   - Cider's support directory is now located in ~/Library/Application Support
     by default instead of ~/.cider/.cache.
-  - Added the stow & unstow commands.
+  - Added the addlink & unlink commands.
 
 v1.1.1, Oct. 29, 2014
   - Added support for Python 3.

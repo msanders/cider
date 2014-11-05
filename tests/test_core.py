@@ -262,17 +262,17 @@ class TestCiderCore(object):
             assert cider.mklink(source, target, force=True)
 
     @pytest.mark.randomize(name=str, min_length=1)
-    def test_stow(self, tmpdir, debug, verbose, name):
+    def test_addlink(self, tmpdir, debug, verbose, name):
         """
         Tests that:
-        1. Stow directory is created & file is moved there.
+        1. Symlink directory is created & file is moved there.
         2. Symlink is created.
         3. Symlink is added to bootstrap.
         4. Cache is updated with new target.
 
         Expected errors:
         - StowError is raised if target does not exist.
-        - StowError is raised if stow already exists.
+        - StowError is raised if target already exists.
         """
         cider = Cider(
             False, debug, verbose,
@@ -289,10 +289,10 @@ class TestCiderCore(object):
 
         # StowError should be raised if source does not exist.
         with pytest.raises(StowError):
-            cider.stow(name, source)
+            cider.addlink(name, source)
 
         touch(source)
-        cider.stow(name, source)
+        cider.addlink(name, source)
         assert os.path.isdir(stow_dir)
         assert os.path.isfile(stow)
         assert os.path.islink(source)
@@ -308,19 +308,19 @@ class TestCiderCore(object):
         os.remove(source)
         touch(source)
         with pytest.raises(StowError):
-            cider.stow(source, name)
+            cider.addlink(source, name)
 
-    @pytest.mark.randomize(name=str, stows=list_of(str), min_length=1)
-    def test_unstow(self, tmpdir, debug, verbose, name, stows):
+    @pytest.mark.randomize(name=str, links=list_of(str), min_length=1)
+    def test_unlink(self, tmpdir, debug, verbose, name, links):
         """
         Tests that:
-        1. Each stow is moved back to its original location.
+        1. Each symlink is moved back to its original location.
         2. Symlinks are removed from bootstrap.
         3. Cache is updated with targets removed.
-        4. Stow directory is removed if empty.
+        4. Symlink directory is removed if empty.
 
         Expected errors:
-        - StowError is raised if no stow was found.
+        - StowError is raised if no symlink was found.
         - SymlinkError is raised if target already exists.
         """
         cider = Cider(
@@ -332,20 +332,19 @@ class TestCiderCore(object):
 
         stow_dir = os.path.abspath(os.path.join(cider.symlink_dir, name))
         os.makedirs(stow_dir)
-        for stow in stows:
-            source = os.path.join(stow_dir, stow)
-            target = str(tmpdir.join(stow))
+        for link in links:
+            source = os.path.join(stow_dir, link)
+            target = str(tmpdir.join(link))
             touch(source)
             os.symlink(source, target)
             cider.add_symlink(name, target)
 
-        print(cider.read_bootstrap())
-        cider.unstow(name)
+        cider.unlink(name)
 
         new_cache = cider._cached_targets()  # pylint:disable=W0212
-        for stow in stows:
-            source = os.path.join(stow_dir, stow)
-            target = str(tmpdir.join(stow))
+        for link in links:
+            source = os.path.join(stow_dir, link)
+            target = str(tmpdir.join(link))
             assert os.path.exists(target)
             assert not os.path.islink(target)
             assert not os.path.exists(source)

@@ -113,7 +113,7 @@ For example, `cider addlink git ~/.gitconfig` will move `~/.gitconfig` to `~/.ci
 
 To undo this change, simply run `cider unlink git`.
 
-Directories are automatically expanded, so the entry `"bin/*": "~/bin/"` will first create the directory `~/bin` if it doesn't exist already, and then link all items in `symlinks/bin/*` to children of that directory.
+Directories in targets are automatically expanded, so the entry `"bin/*": "~/bin/"` will first create the directory `~/bin/` if it doesn't exist already, and then link all items in `symlinks/bin/*` to children of that directory.
 
 ## Caveats
 

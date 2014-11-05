@@ -12,7 +12,7 @@ Simply run the following on a new machine:
     cider restore
 
 
-... and you’ll be back up and running, with all of your applications and command line utilities re-installed (and configurations restored).
+... and you'll be back up and running, with all of your applications and command line utilities re-installed (and configurations restored).
 
 
 In addition to Homebrew, Cider also supports managing your user defaults, restoring symlinks, and running scripts to conveniently manage other settings such as your dotfiles.
@@ -22,12 +22,12 @@ In addition to Homebrew, Cider also supports managing your user defaults, restor
 
 Cider is available directly from [PyPI](https://pypi.python.org/pypi/cider):
 
-    pip install cider
+    pip install -U cider
 
 
 ## Configuration
 
-All configuration files are stored in the `~/.cider` directory as JSON. E.g., here’s an example bootstrap file:
+All configuration files are stored in the `~/.cider` directory as JSON. For instance, here's an example bootstrap file:
 
     {
         "after-scripts": [
@@ -79,10 +79,10 @@ User defaults are stored similarly:
     {
         "NSGlobalDomain": {
             "ApplePressAndHoldEnabled": false
-        }, 
+        },
         "com.apple.dock": {
             "tilesize": 48
-        }, 
+        },
         "com.iconfactor.mac.xScope": {
             "generalShowDockIcon": false
         }
@@ -97,8 +97,25 @@ To save the state of your existing setup:
     cider missing
     cider cask missing
 
+## Manage symlinks
+
+Cider supports the following commands to manage symlinks (inspired in part by [GNU Stow](http://brandon.invergo.net/news/2012-05-26-using-gnu-stow-to-manage-your-dotfiles.html)).
+
+    cider stow [NAME] [ITEM]
+    cider relink # (automatically invoked by restore)
+
+For example, `cider stow ~/.gitconfig git` will move `~/.gitconfig` to `~/.cider/symlinks/git/.gitconfig`, create a link back to the original location, and add an entry to your bootstrap denoting this:
+
+    "symlinks": {
+        "git/.*": "~"
+    }
+
+To undo this change, simply run `cider unstow git`.
+
+Directories are automatically expanded, so the entry `"bin/*": "~/bin/"` will first create the directory `~/bin` if it doesn't already exist, and then link all items in `symlinks/bin` to targets in that directory.
+
 ## Caveats
 
 There doesn't seem to be a way to re-install purchases made from Mac App Store via the command line just yet, so those have to be done by hand.
 
-**Note**: Cider is a work-in-progress, but it’s fairly well-tested and should be kind to your machine.
+**Note**: Cider is a work-in-progress, but it's fairly well-tested and should be kind to your machine.

@@ -126,14 +126,20 @@ class TestCiderCLI(object):
 
     def test_run_scripts(self, debug, verbose):
         _test_command(
-            ("run-scripts", "run_scripts"), debug=debug, verbose=verbose
+            ("run-scripts", "run_scripts"),
+            debug=debug, verbose=verbose,
+            expected_flags = {
+                "before": True,
+                "after": True
+            }
         )
 
     def test_restore(self, debug, verbose):
         _test_command("restore", debug=debug, verbose=verbose)
 
-    def test_relink(self, debug, verbose):
-        _test_command("relink", debug=debug, verbose=verbose)
+    @pytest.mark.randomize(force=bool)
+    def test_relink(self, debug, verbose, force):
+        _test_command("relink", debug=debug, verbose=verbose, force=force)
 
     @pytest.mark.randomize(name=str, sources=nonempty_list_of(str),
                            min_length=1)
@@ -172,9 +178,12 @@ def _test_command(cmd, args=None, **flags):
     cmd, func = cmd if isinstance(cmd, tuple) else (cmd, cmd.split(" ")[-1])
     args = [] if args is None else args
     cask = cmd.split(" ")[0] == "cask"
+    expected = flags.pop("expected_flags", {})
     result, MockCider = _invoke_command(cmd, args, **flags)
+
     debug = flags.pop("debug", False)
     verbose = flags.pop("verbose", False)
+    flags.update(expected)
 
     assert not result.exception
     assert result.exit_code == 0

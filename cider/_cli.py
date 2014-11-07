@@ -136,7 +136,7 @@ def untap(cider, tap):
 @click.option("-f", "--force", is_flag=True)
 @click.pass_obj
 def relink(cider, force=None):
-    cider.relink(force)
+    cider.relink(force=force)
 
 
 @cli.command("list")

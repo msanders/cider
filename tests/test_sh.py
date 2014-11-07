@@ -74,7 +74,9 @@ class TestBrew(object):
             args += self.__flags(debug, verbose)
 
             brew.tap(tap)
-            sh.spawn.assert_called_with(args, debug=debug, check_output=False)
+            sh.spawn.assert_called_with(args,
+                                        debug=debug,
+                                        check_output=not use_tap)
 
     @pytest.mark.randomize(tap=str)
     def test_untap(self, cask, debug, verbose, tap):

@@ -103,7 +103,7 @@ To save the state of your existing setup:
 
 Cider supports the following commands to manage symlinks (inspired in part by [GNU Stow](http://brandon.invergo.net/news/2012-05-26-using-gnu-stow-to-manage-your-dotfiles.html)).
 
-    cider addlink [NAME] [ITEM]
+    cider addlink NAME ITEM...
     cider relink # (invoked automatically by restore)
 
 For example, `cider addlink git ~/.gitconfig` will move `~/.gitconfig` to `~/.cider/symlinks/git/`, create a link back to its original location, and add an entry to your bootstrap denoting this:

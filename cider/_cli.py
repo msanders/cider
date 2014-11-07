@@ -28,15 +28,15 @@ class CLI(click.Group):
             "{0} tap missing",
             "{0} set-default [-g] NAME KEY VALUE",
             "{0} remove-default [-g] NAME KEY",
-            "{0} apply-defaults",
+            "{0} addlink NAME ITEM...",
+            "{0} unlink NAME",
             "{0} set-icon APP ICON",
             "{0} remove-icon APP",
+            "{0} apply-defaults",
             "{0} apply-icons",
             "{0} run-scripts",
             "{0} restore",
             "{0} relink",
-            "{0} addlink NAME ITEM...",
-            "{0} unlink"
         ]
 
         basename = ctx.command_path

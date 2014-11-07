@@ -3,7 +3,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from cider import _cli as cli
 from click.testing import CliRunner
-from pytest import list_of
+from pytest import nonempty_list_of
 import pytest
 
 try:
@@ -14,14 +14,14 @@ except ImportError:
 
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
 class TestBrewCLI(object):
-    @pytest.mark.randomize(formulas=list_of(str, min_items=1), force=bool)
+    @pytest.mark.randomize(formulas=nonempty_list_of(str), force=bool)
     def test_install(self, cask, debug, verbose, formulas, force):
         cmd = self.__cask("install", cask)
         _test_command(
             cmd, formulas, debug=debug, verbose=verbose, force=force
         )
 
-    @pytest.mark.randomize(formulas=list_of(str, min_items=1))
+    @pytest.mark.randomize(formulas=nonempty_list_of(str))
     def test_rm(self, cask, debug, verbose, formulas):
         cmd = self.__cask("rm", cask)
         _test_command(
@@ -135,9 +135,11 @@ class TestCiderCLI(object):
     def test_relink(self, debug, verbose):
         _test_command("relink", debug=debug, verbose=verbose)
 
-    @pytest.mark.randomize(source=str, name=str, min_length=1)
-    def test_addlink(self, debug, verbose, source, name):
-        _test_command("addlink", [name, source], debug=debug, verbose=verbose)
+    @pytest.mark.randomize(name=str, sources=nonempty_list_of(str),
+                           min_length=1)
+    def test_addlink(self, debug, verbose, name, sources):
+        _test_command("addlink", [name] + sources,
+                      debug=debug, verbose=verbose)
 
     @pytest.mark.randomize(name=str, min_length=1)
     def test_unlink(self, debug, verbose, name):

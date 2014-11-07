@@ -562,31 +562,34 @@ class Cider(object):
 
         return self._modify_bootstrap("symlinks", transform)
 
-    def addlink(self, name, path):
-        stow_path = os.path.join(self.symlink_dir, name)
-        stow_fpath = os.path.join(stow_path, os.path.basename(path))
-        if not os.path.exists(path):
-            raise StowError("Can't link {0}: No such file or directory".format(
-                collapseuser(path)
-            ))
+    def addlink(self, name, *items):
+        for item in items:
+            stow_path = os.path.join(self.symlink_dir, name)
+            stow_fpath = os.path.join(stow_path, os.path.basename(item))
+            if not os.path.exists(item):
+                raise StowError(
+                    "Can't link {0}: No such file or directory".format(
+                        collapseuser(item)
+                    )
+                )
 
-        samefile = os.path.exists(stow_fpath) and os.path.samefile(
-            os.path.realpath(stow_fpath), os.path.realpath(path)
-        )
+            samefile = os.path.exists(stow_fpath) and os.path.samefile(
+                os.path.realpath(stow_fpath), os.path.realpath(item)
+            )
 
-        if os.path.exists(stow_fpath) and not samefile:
-            raise StowError("Link already exists at {0}".format(
-                collapseuser(stow_fpath)
-            ))
+            if os.path.exists(stow_fpath) and not samefile:
+                raise StowError("Link already exists at {0}".format(
+                    collapseuser(stow_fpath)
+                ))
 
-        if not samefile:
-            mkdir_p(stow_path)
-            shutil.move(path, stow_path)
+            if not samefile:
+                mkdir_p(stow_path)
+                shutil.move(item, stow_path)
 
-        target = os.path.abspath(path)
-        self.add_symlink(name, target)
-        self.mklink(stow_fpath, target)
-        self._update_target_cache(self._cached_targets() + [target])
+            target = os.path.abspath(item)
+            self.add_symlink(name, target)
+            self.mklink(stow_fpath, target)
+            self._update_target_cache(self._cached_targets() + [target])
 
     def unlink(self, name):
         symlinks = self.read_bootstrap().get("symlinks", {})

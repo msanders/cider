@@ -35,10 +35,8 @@ class CLI(click.Group):
             "{0} run-scripts",
             "{0} restore",
             "{0} relink",
-            "{0} addlink",
+            "{0} addlink NAME ITEM...",
             "{0} unlink"
-            "{0} stow NAME ITEM",
-            "{0} unstow NAME"
         ]
 
         basename = ctx.command_path
@@ -222,10 +220,10 @@ def run_scripts(cider):
 
 @cli.command("addlink")
 @click.argument("name")
-@click.argument("item")
+@click.argument("items", nargs=-1, required=True)
 @click.pass_obj
-def addlink(cider, name, item):
-    cider.addlink(name, item)
+def addlink(cider, name, items):
+    cider.addlink(name, *items)
 
 
 @cli.command("unlink")

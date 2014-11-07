@@ -96,6 +96,7 @@ To see how this works out in practice, feel free to take a look at [my dotfiles]
 To save the state of your existing setup:
 
     cider missing
+    cider tap missing
     cider cask missing
 
 ## Manage symlinks

@@ -376,9 +376,9 @@ class TestCiderCore(object):
         with patch("cider.core.spawn", autospec=True, return_value=0) as spawn:
             cider.run_scripts(before, after)
             for script in scripts:
-                spawn.assert_any_call(
-                    [script], shell=True, debug=debug, cwd=cider.cider_dir
-                )
+                spawn.assert_any_call([script],
+                                      shell=True, debug=debug,
+                                      cwd=cider.cider_dir, env=cider.env)
 
     @pytest.mark.randomize(installed=list_of(str), brewed=list_of(str),
                            min_length=1)

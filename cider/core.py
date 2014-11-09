@@ -34,12 +34,12 @@ class Cider(object):
         self.cask = cask if cask is not None else False
         self.debug = debug if debug is not None else False
         self.verbose = verbose if verbose is not None else False
-        self.brew = Brew(cask, debug, verbose)
-        self.defaults = Defaults(debug)
         self.cider_dir = cider_dir if cider_dir is not None else \
             self.fallback_cider_dir()
         self.support_dir = support_dir if support_dir is not None else \
             self.fallback_support_dir()
+        self.brew = Brew(cask, debug, verbose, self.env)
+        self.defaults = Defaults(debug, self.env)
 
     @lazyproperty
     def symlink_dir(self):
@@ -53,17 +53,21 @@ class Cider(object):
     def defaults_file(self):
         return os.path.join(self.cider_dir, "defaults.json")
 
-    @staticmethod
-    def fallback_cider_dir():
+    @lazyproperty
+    def env(self):
+        env = os.environ.copy()
+        env.update(self.read_bootstrap().get("env", {}))
+        return env
+
+    def fallback_cider_dir(self):
         try:
-            return os.path.join(os.environ["XDG_CONFIG_HOME"], "cider")
+            return os.path.join(self.env["XDG_CONFIG_HOME"], "cider")
         except KeyError:
             return os.path.join(os.path.expanduser("~"), ".cider")
 
-    @staticmethod
-    def fallback_support_dir():
+    def fallback_support_dir(self):
         try:
-            return os.path.join(os.environ["XDG_DATA_HOME"], "cider")
+            return os.path.join(self.env["XDG_DATA_HOME"], "cider")
         except KeyError:
             return os.path.join(
                 os.path.expanduser("~"),
@@ -163,14 +167,16 @@ class Cider(object):
                 "https://itunes.apple.com/us/app/xcode/id497799835?mt=12"
             )
         elif spawn(["which", "brew"], check_call=False, debug=self.debug,
-                   stdout=subprocess.PIPE, stderr=subprocess.PIPE):
+                   stdout=subprocess.PIPE,
+                   stderr=subprocess.PIPE,
+                   env=self.env):
             raise BrewMissingError(
                 "Homebrew not installed",
                 "http://brew.sh/#install"
             )
 
     @staticmethod
-    def _isstow(symlink, stow):
+    def _islinkkey(symlink, stow):
         return symlink == stow or symlink.startswith(os.path.join(stow, ""))
 
     def restore(self):
@@ -500,7 +506,8 @@ class Cider(object):
         scripts += bootstrap.get("before-scripts", []) if before else []
         scripts += bootstrap.get("after-scripts", []) if after else []
         for script in scripts:
-            spawn([script], shell=True, debug=self.debug, cwd=self.cider_dir)
+            spawn([script], shell=True, debug=self.debug,
+                  cwd=self.cider_dir, env=self.env)
 
     def set_icon(self, app, icon):
         def transform(icons):
@@ -556,7 +563,7 @@ class Cider(object):
         def transform(symlinks):
             if symlinks:
                 for key in symlinks.keys():
-                    if self._isstow(key, name):
+                    if self._islinkkey(key, name):
                         del symlinks[key]
 
             return symlinks
@@ -598,7 +605,7 @@ class Cider(object):
         removed_targets = set()
         found = False
         for source_glob, target in symlinks.items():
-            if self._isstow(source_glob, name):
+            if self._islinkkey(source_glob, name):
                 found = True
                 for source, target in self.expandtargets(source_glob, target):
                     self._remove_link_target(source, target)

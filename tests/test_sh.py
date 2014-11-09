@@ -41,7 +41,8 @@ class TestBrew(object):
         args += self.__flags(debug, verbose)
 
         brew.install(*formulas, force=force)
-        sh.spawn.assert_called_with(args, debug=debug, check_output=False)
+        sh.spawn.assert_called_with(args, debug=debug, check_output=False,
+                                    env=brew.env)
 
     @pytest.mark.randomize(formulas=nonempty_list_of(str))
     def test_rm(self, cask, debug, verbose, formulas):
@@ -50,7 +51,8 @@ class TestBrew(object):
         args += self.__flags(debug, verbose)
 
         brew.rm(*formulas)
-        sh.spawn.assert_called_with(args, debug=debug, check_output=False)
+        sh.spawn.assert_called_with(args, debug=debug, check_output=False,
+                                    env=brew.env)
 
     @pytest.mark.randomize(formula=str)
     def test_safe_install(self, cask, debug, verbose, formula):
@@ -62,7 +64,8 @@ class TestBrew(object):
         sh.spawn.side_effect = CalledProcessError(42, " ".join(args))
 
         brew.safe_install(formula)
-        sh.spawn.assert_called_with(args, debug=debug, check_output=False)
+        sh.spawn.assert_called_with(args, debug=debug, check_output=False,
+                                    env=brew.env)
         sh.spawn.side_effect = old_side_effect
 
     @pytest.mark.randomize(tap=str, use_tap=bool)
@@ -74,9 +77,9 @@ class TestBrew(object):
             args += self.__flags(debug, verbose)
 
             brew.tap(tap)
-            sh.spawn.assert_called_with(args,
-                                        debug=debug,
-                                        check_output=not use_tap)
+            sh.spawn.assert_called_with(args, debug=debug,
+                                        check_output=not use_tap,
+                                        env=brew.env)
 
     @pytest.mark.randomize(tap=str)
     def test_untap(self, cask, debug, verbose, tap):
@@ -86,7 +89,8 @@ class TestBrew(object):
             args += self.__flags(debug, verbose)
 
             brew.untap(tap)
-            sh.spawn.assert_called_with(args, debug=debug, check_output=False)
+            sh.spawn.assert_called_with(args, debug=debug, check_output=False,
+                                        env=brew.env)
 
     @pytest.mark.randomize()
     def test_ls(self, cask, debug, verbose):
@@ -95,7 +99,8 @@ class TestBrew(object):
         args = self.__cmd(cask) + ["ls", "-1"]
 
         brew.ls()
-        sh.spawn.assert_called_with(args, debug=debug, check_output=True)
+        sh.spawn.assert_called_with(args, debug=debug, check_output=True,
+                                    env=brew.env)
         sh.spawn.return_value = old_return
 
     @pytest.mark.randomize(formula=str)
@@ -107,7 +112,8 @@ class TestBrew(object):
         args += self.__flags(debug, verbose)
 
         brew.uses(formula)
-        sh.spawn.assert_called_with(args, debug=debug, check_output=True)
+        sh.spawn.assert_called_with(args, debug=debug, check_output=True,
+                                    env=brew.env)
         sh.spawn.return_value = old_return
 
     @staticmethod
@@ -138,7 +144,7 @@ class TestDefaults(object):
         args += [domain, key, defaults.key_type(value), str(value)]
 
         defaults.write(domain, key, value, force)
-        sh.spawn.assert_called_with(args, debug=debug)
+        sh.spawn.assert_called_with(args, debug=debug, env=defaults.env)
 
     @pytest.mark.randomize(domain=str, key=str)
     def test_delete(self, debug, domain, key):
@@ -146,7 +152,7 @@ class TestDefaults(object):
         args = ["defaults", "delete", domain, key]
 
         defaults.delete(domain, key)
-        sh.spawn.assert_called_with(args, debug=debug)
+        sh.spawn.assert_called_with(args, debug=debug, env=defaults.env)
 
 
 @pytest.mark.randomize(args=nonempty_list_of(str), check_call=bool,

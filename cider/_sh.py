@@ -15,10 +15,11 @@ JSONDecodeError = ValueError
 
 
 class Brew(object):
-    def __init__(self, cask=None, debug=None, verbose=None):
+    def __init__(self, cask=None, debug=None, verbose=None, env=None):
         self.cask = cask if cask is not None else False
         self.debug = debug if debug is not None else False
         self.verbose = verbose if verbose is not None else False
+        self.env = env
 
     def __spawn(self, cmd, cmdargs, prompt=None, check_output=None):
         check_output = check_output if check_output is not None else False
@@ -32,7 +33,8 @@ class Brew(object):
             args += (["--verbose"] if self.verbose else [])
 
         try:
-            return spawn(args, debug=self.debug, check_output=check_output)
+            return spawn(args, debug=self.debug,
+                         check_output=check_output, env=self.env)
         except CalledProcessError as e:
             if not prompt or not click.confirm(prompt):
                 raise e
@@ -81,18 +83,20 @@ class Brew(object):
 
 
 class Defaults(object):
-    def __init__(self, debug=None):
+    def __init__(self, debug=None, env=None):
         self.debug = debug if debug is not None else False
+        self.env = env
 
     def write(self, domain, key, value, force=None):
         force = force if force is not None else False
 
         args = ["defaults", "write"] + (["-f"] if force else [])
         args += [domain, key, self.key_type(value), str(value)]
-        return spawn(args, debug=self.debug)
+        return spawn(args, debug=self.debug, env=self.env)
 
     def delete(self, domain, key):
-        return spawn(["defaults", "delete", domain, key], debug=self.debug)
+        return spawn(["defaults", "delete", domain, key], debug=self.debug,
+                     env=self.env)
 
     @staticmethod
     def key_type(value):

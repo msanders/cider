@@ -5,7 +5,7 @@ from ._lib import touch
 from cider import _sh as sh
 from cider._sh import Brew, Defaults
 from cider.exceptions import JSONError
-from pytest import list_of, dict_of
+from pytest import dict_of, nonempty_list_of
 from subprocess import CalledProcessError
 import errno
 import json
@@ -33,7 +33,7 @@ class TestBrew(object):
     def teardown_class(cls):
         cls.patcher.stop()
 
-    @pytest.mark.randomize(formulas=list_of(str, min_items=1), force=bool)
+    @pytest.mark.randomize(formulas=nonempty_list_of(str), force=bool)
     def test_install(self, cask, debug, verbose, formulas, force):
         brew = Brew(cask, debug, verbose)
         args = self.__cmd(cask)
@@ -43,7 +43,7 @@ class TestBrew(object):
         brew.install(*formulas, force=force)
         sh.spawn.assert_called_with(args, debug=debug, check_output=False)
 
-    @pytest.mark.randomize(formulas=list_of(str, min_items=1))
+    @pytest.mark.randomize(formulas=nonempty_list_of(str))
     def test_rm(self, cask, debug, verbose, formulas):
         brew = Brew(cask, debug, verbose)
         args = self.__cmd(cask) + ["zap" if cask else "rm"] + formulas
@@ -149,12 +149,8 @@ class TestDefaults(object):
         sh.spawn.assert_called_with(args, debug=debug)
 
 
-@pytest.mark.randomize(
-    args=list_of(str, min_items=1),
-    check_call=bool,
-    check_output=bool,
-    debug=bool
-)
+@pytest.mark.randomize(args=nonempty_list_of(str), check_call=bool,
+                       check_output=bool, debug=bool)
 def test_spawn(args, check_call, check_output, debug):
     if check_output:
         expected_call = "check_output"

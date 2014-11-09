@@ -5,7 +5,7 @@ from ._lib import random_case, random_str, touch
 from cider import Cider
 from cider.exceptions import SymlinkError, StowError
 from cider._sh import isdirname
-from pytest import list_of, dict_of
+from pytest import list_of, dict_of, nonempty_list_of
 from glob import iglob
 import os
 import pytest
@@ -21,9 +21,8 @@ except ImportError:
 
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
 class TestBrewCore(object):
-    @pytest.mark.randomize(
-        formulas=list_of(str, min_items=1), force=bool, min_length=1
-    )
+    @pytest.mark.randomize(formulas=nonempty_list_of(str), force=bool,
+                           min_length=1)
     def test_install(self, tmpdir, cask, debug, verbose, formulas, force):
         cider = Cider(cask, debug, verbose, cider_dir=str(tmpdir))
         cider.brew = MagicMock()
@@ -34,7 +33,7 @@ class TestBrewCore(object):
         for formula in formulas:
             assert formula in cider.read_bootstrap().get(key, [])
 
-    @pytest.mark.randomize(formulas=list_of(str, min_items=1), min_length=1)
+    @pytest.mark.randomize(formulas=nonempty_list_of(str), min_length=1)
     def test_rm(self, tmpdir, cask, debug, verbose, formulas):
         cider = Cider(cask, debug, verbose, cider_dir=str(tmpdir))
         cider.brew = MagicMock()
@@ -307,7 +306,7 @@ class TestCiderCore(object):
         with pytest.raises(StowError):
             cider.addlink(source, name)
 
-    @pytest.mark.randomize(name=str, links=list_of(str), min_length=1)
+    @pytest.mark.randomize(name=str, links=nonempty_list_of(str), min_length=1)
     def test_unlink(self, tmpdir, debug, verbose, name, links):
         """
         Tests that:
@@ -364,7 +363,7 @@ class TestCiderCore(object):
     @pytest.mark.randomize(before=bool, after=bool, bootstrap={
         "before-scripts": list_of(str),
         "after-scripts": list_of(str)
-    })
+    }, min_length=1)
     def test_run_scripts(self, tmpdir, debug, verbose, before,
                          after, bootstrap):
         cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))

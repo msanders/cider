@@ -14,14 +14,15 @@ except ImportError:
 
 @pytest.mark.randomize(cask=bool, debug=bool, verbose=bool)
 class TestBrewCLI(object):
-    @pytest.mark.randomize(formulas=nonempty_list_of(str), force=bool)
+    @pytest.mark.randomize(formulas=nonempty_list_of(str), force=bool,
+                           min_length=1)
     def test_install(self, cask, debug, verbose, formulas, force):
         cmd = self.__cask("install", cask)
         _test_command(
             cmd, formulas, debug=debug, verbose=verbose, force=force
         )
 
-    @pytest.mark.randomize(formulas=nonempty_list_of(str))
+    @pytest.mark.randomize(formulas=nonempty_list_of(str), min_length=1)
     def test_rm(self, cask, debug, verbose, formulas):
         cmd = self.__cask("rm", cask)
         _test_command(
@@ -128,7 +129,7 @@ class TestCiderCLI(object):
         _test_command(
             ("run-scripts", "run_scripts"),
             debug=debug, verbose=verbose,
-            expected_flags = {
+            expected_flags={
                 "before": True,
                 "after": True
             }

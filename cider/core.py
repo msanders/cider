@@ -6,6 +6,7 @@ from .exceptions import (
     UnsupportedOSError, XcodeMissingError, BrewMissingError,
     SymlinkError, AppMissingError, StowError
 )
+from ._lib import lazyproperty
 from ._sh import (
     Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p, read_json,
     write_json, modify_json, isdirname
@@ -40,15 +41,15 @@ class Cider(object):
         self.support_dir = support_dir if support_dir is not None else \
             self.fallback_support_dir()
 
-    @property
+    @lazyproperty
     def symlink_dir(self):
         return os.path.join(self.cider_dir, "symlinks")
 
-    @property
+    @lazyproperty
     def bootstrap_file(self):
         return os.path.join(self.cider_dir, "bootstrap.json")
 
-    @property
+    @lazyproperty
     def defaults_file(self):
         return os.path.join(self.cider_dir, "defaults.json")
 
@@ -71,7 +72,7 @@ class Cider(object):
                 "com.msanders.cider"
             )
 
-    @property
+    @lazyproperty
     def symlink_targets_file(self):
         return os.path.join(self.support_dir, "symlink_targets.json")
 

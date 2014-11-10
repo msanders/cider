@@ -8,7 +8,7 @@ import click
 import sys
 
 from .exceptions import (
-    BrewMissingError, CiderException, JSONError, XcodeMissingError
+    BrewMissingError, CiderException, JSONError
 )
 
 CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
@@ -249,11 +249,6 @@ def main():
             e.filepath,
             e.message
         ))
-    except XcodeMissingError as e:
-        print("First, you need to install Xcode (press any key to redirect)")
-        click.getchar()
-        urlopen(e.url)
-        sys.exit(1)
     except BrewMissingError as e:
         print("Next, install Homebrew (press any key to redirect)")
         click.getchar()

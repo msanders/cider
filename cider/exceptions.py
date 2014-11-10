@@ -19,16 +19,14 @@ class UnsupportedOSError(CiderException):
         self.macos_version = macos_version
 
 
-class XcodeMissingError(CiderException):
-    def __init__(self, message, url, exit_code=None):
-        CiderException.__init__(self, message, exit_code)
-        self.url = url
-
-
 class BrewMissingError(CiderException):
     def __init__(self, message, url, exit_code=None):
         CiderException.__init__(self, message, exit_code)
         self.url = url
+
+
+class XcodeMissingError(CiderException):
+    pass
 
 
 class SymlinkError(CiderException):

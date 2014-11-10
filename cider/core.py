@@ -15,6 +15,7 @@ from fnmatch import fnmatch
 from glob import iglob
 from rfc3987 import parse as urlparse
 from tempfile import mkdtemp
+import click
 import errno
 import json
 import os
@@ -152,6 +153,16 @@ class Cider(object):
                     )
                 )
 
+    def _has_xcode_tools(self):
+        developer_dir = spawn(["/usr/bin/xcode-select", "-print-path"],
+                              check_output=True,
+                              debug=self.debug,
+                              env=self.env)
+
+        return bool(os.path.isdir(developer_dir) and os.path.exists(
+            os.path.join(developer_dir, "usr", "bin", "git")
+        ))
+
     def _assert_requirements(self):
         macos_version = platform.mac_ver()[0]
 
@@ -161,15 +172,22 @@ class Cider(object):
                 "and try again.",
                 macos_version
             )
-        elif not os.path.isdir("/Applications/Xcode.app"):
-            raise XcodeMissingError(
-                "Xcode not installed",
-                "https://itunes.apple.com/us/app/xcode/id497799835?mt=12"
-            )
-        elif spawn(["which", "brew"], check_call=False, debug=self.debug,
-                   stdout=subprocess.PIPE,
-                   stderr=subprocess.PIPE,
-                   env=self.env):
+
+        if not self._has_xcode_tools():
+            print(tty.progress("Installing the Command Line Tools (expect a "
+                               "GUI popup):"))
+            spawn(["/usr/bin/xcode-select", "--install"],
+                  debug=self.debug, env=self.env)
+            click.pause("Press any key when the installation is complete.")
+            if not self._has_xcode_tools():
+                raise XcodeMissingError(
+                    "Aborted Command Line Tools installation.",
+                )
+
+        if spawn(["which", "brew"], check_call=False, debug=self.debug,
+                 stdout=subprocess.PIPE,
+                 stderr=subprocess.PIPE,
+                 env=self.env):
             raise BrewMissingError(
                 "Homebrew not installed",
                 "http://brew.sh/#install"

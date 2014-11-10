@@ -11,6 +11,8 @@ from .exceptions import (
     BrewMissingError, CiderException, JSONError, XcodeMissingError
 )
 
+CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
+
 
 class CLI(click.Group):
     def __init__(self, **attrs):
@@ -54,7 +56,7 @@ class CLI(click.Group):
         return click.Group.get_command(self, ctx, command)
 
 
-@click.group(cls=CLI)
+@click.group(cls=CLI, context_settings=CONTEXT_SETTINGS)
 @click.option("-d", "--debug", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
 @click.pass_context

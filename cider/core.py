@@ -61,13 +61,13 @@ class Cider(object):
 
     def fallback_cider_dir(self):
         try:
-            return os.path.join(self.env["XDG_CONFIG_HOME"], "cider")
+            return os.path.join(os.environ["XDG_CONFIG_HOME"], "cider")
         except KeyError:
             return os.path.join(os.path.expanduser("~"), ".cider")
 
     def fallback_support_dir(self):
         try:
-            return os.path.join(self.env["XDG_DATA_HOME"], "cider")
+            return os.path.join(os.environ["XDG_DATA_HOME"], "cider")
         except KeyError:
             return os.path.join(
                 os.path.expanduser("~"),

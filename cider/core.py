@@ -179,7 +179,8 @@ class Cider(object):
     def _islinkkey(symlink, stow):
         return symlink == stow or symlink.startswith(os.path.join(stow, ""))
 
-    def restore(self):
+    def restore(self, ignore_errors=None):
+        ignore_errors = ignore_errors if ignore_errors is not None else False
         self._assert_requirements()
         caskbrew = Brew(True, self.debug, self.verbose)
         homebrew = Brew(False, self.debug, self.verbose)
@@ -209,13 +210,13 @@ class Cider(object):
                         )
                     )
 
-                    caskbrew.safe_install(cask)
+                    caskbrew.safe_install(cask, ignore_errors)
                     del casks[casks.index(cask)]
 
-            homebrew.safe_install(formula)
+            homebrew.safe_install(formula, ignore_errors)
 
         for cask in casks:
-            caskbrew.safe_install(cask)
+            caskbrew.safe_install(cask, ignore_errors)
 
         self.relink()
         self.apply_defaults()

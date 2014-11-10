@@ -136,7 +136,12 @@ class TestCiderCLI(object):
         )
 
     def test_restore(self, debug, verbose):
-        _test_command("restore", debug=debug, verbose=verbose)
+        _test_command("restore",
+                      debug=debug,
+                      verbose=verbose,
+                      expected_flags={
+                          "ignore_errors": False
+                      })
 
     @pytest.mark.randomize(force=bool)
     def test_relink(self, debug, verbose, force):

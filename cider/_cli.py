@@ -98,8 +98,9 @@ def cask(ctx, command, args, force=None):
 
 @cli.command()
 @click.pass_obj
-def restore(cider):
-    cider.restore()
+@click.option("-i", "--ignore-errors", is_flag=True)
+def restore(cider, ignore_errors):
+    cider.restore(ignore_errors=ignore_errors)
 
 
 @cli.command()

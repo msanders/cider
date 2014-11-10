@@ -42,9 +42,19 @@ class Brew(object):
     def __assert_no_cask(self, cmd):
         assert not self.cask, "no such command: `brew cask {0}`".format(cmd)
 
-    def safe_install(self, formula):
-        prompt = "Failed to install {0}. Continue? [y/N]".format(formula)
-        return self.__spawn("install", formula.split(" "), prompt)
+    def safe_install(self, formula, warn=None):
+        warn = warn if warn is not None else False
+        try:
+            prompt = None
+            if not warn:
+                prompt = "Failed to install {0}. Continue? [y/N]".format(
+                    formula
+                )
+            return self.__spawn("install", formula.split(" "), prompt)
+        except CalledProcessError as e:
+            if not warn:
+                raise e
+            tty.puterr("Failed to install {0}".format(formula), warning=True)
 
     def install(self, *formulas, **kwargs):
         formulas = list(formulas) or []

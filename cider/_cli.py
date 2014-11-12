@@ -57,7 +57,7 @@ class CLI(click.Group):
         return click.Group.get_command(self, ctx, command)
 
 
-def print_version(ctx, param, value):  # # pylint: disable=W0613
+def print_version(ctx, param, value):  # pylint: disable=W0613
     if value or not ctx.resilient_parsing:
         print(__version__)
         ctx.exit()

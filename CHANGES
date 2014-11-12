@@ -1,3 +1,8 @@
+v1.1.4, Nov. 12, 2014
+  - Added support for setting environment in bootstrap.
+  - Added option to skip prompts about installation failures during restore.
+  - Removed requirement for Xcode when restoring.
+
 v1.1.3, Nov. 7, 2014
   - Added `cider tap missing` command.
   - Allow adding multiple items at once using `addlink`.

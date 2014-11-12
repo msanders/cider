@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
+from . import __version__
 from . import _tty as tty
 from .core import Cider
 from subprocess import CalledProcessError
@@ -56,9 +57,17 @@ class CLI(click.Group):
         return click.Group.get_command(self, ctx, command)
 
 
+def print_version(ctx, param, value):  # # pylint: disable=W0613
+    if value or not ctx.resilient_parsing:
+        print(__version__)
+        ctx.exit()
+
+
 @click.group(cls=CLI, context_settings=CONTEXT_SETTINGS)
 @click.option("-d", "--debug", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
+@click.option("--version", is_flag=True, callback=print_version,
+              expose_value=False, is_eager=True)
 @click.pass_context
 def cli(ctx, debug, verbose):
     ctx.obj = Cider(False, debug, verbose)

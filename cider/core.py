@@ -157,7 +157,7 @@ class Cider(object):
         developer_dir = spawn(["/usr/bin/xcode-select", "-print-path"],
                               check_output=True,
                               debug=self.debug,
-                              env=self.env)
+                              env=self.env).strip()
 
         return bool(os.path.isdir(developer_dir) and os.path.exists(
             os.path.join(developer_dir, "usr", "bin", "git")

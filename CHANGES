@@ -1,3 +1,7 @@
+v1.1.5, Nov. 15, 2014
+  - Fixed broken execution flow for `--version` flag.
+  - Fixed false-positive for xcode-select requirement.
+
 v1.1.4, Nov. 12, 2014
   - Added support for setting environment in bootstrap.
   - Added option to skip prompts about installation failures during restore.

@@ -58,9 +58,10 @@ class CLI(click.Group):
 
 
 def print_version(ctx, param, value):  # pylint: disable=W0613
-    if value or not ctx.resilient_parsing:
-        print(__version__)
-        ctx.exit()
+    if not value or ctx.resilient_parsing:
+        return
+    print(__version__)
+    ctx.exit()
 
 
 @click.group(cls=CLI, context_settings=CONTEXT_SETTINGS)

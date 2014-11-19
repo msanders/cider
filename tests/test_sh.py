@@ -4,11 +4,11 @@ from __future__ import absolute_import, print_function, unicode_literals
 from ._lib import touch
 from cider import _sh as sh
 from cider._sh import Brew, Defaults
-from cider.exceptions import JSONError
+from cider.exceptions import ParserError
 from pytest import dict_of, nonempty_list_of
 from subprocess import CalledProcessError
 import errno
-import json
+import yaml
 import os
 import pytest
 import random
@@ -232,39 +232,42 @@ def test_commonpath(tmpdir, path1, path2, bogusprefix):
 
 @pytest.mark.parametrize("fallback", [None, {}, []])
 @pytest.mark.randomize(path=str, contents=dict_of(str, str), min_length=1)
-def test_read_json(path, contents, fallback):
-    def test_case(assertion, mock=None, read_data=None):
+def test_read_config(path, contents, fallback):
+    def test_case(assertion, msg, mock=None, read_data=None):
         with patch("__builtin__.open", mock_open(mock, read_data)):
-            assert assertion()
+            assert assertion(), msg
 
     test_case(
-        lambda: sh.read_json(path, fallback) == contents,
-        read_data=json.dumps(contents)
+        lambda: sh.read_config(path, fallback) == contents,
+        "Should read valid YAML",
+        read_data=yaml.dump(contents, default_flow_style=False)
     )
 
     with pytest.raises(IOError) if fallback is None else empty():
         test_case(
-            lambda: sh.read_json(path, fallback) == fallback,
+            lambda: sh.read_config(path, fallback) == fallback,
+            "Should use fallback if file is missing",
             MagicMock(side_effect=IOError(errno.ENOENT, ""))
         )
 
-    with pytest.raises(JSONError):
+    with pytest.raises(ParserError):
         test_case(
-            lambda: sh.read_json(path, fallback) is None,
-            read_data="garbage",
+            lambda: sh.read_config(path, fallback) is None,
+            "Should raise error if data is invalid",
+            read_data="[garbage}",
         )
 
 
 @pytest.mark.randomize(path=str, contents=dict_of(str, str), min_length=1)
-def test_modify_json(tmpdir, path, contents):
+def test_modify_config(tmpdir, path, contents):
     fullpath = str(tmpdir.join(path))
 
-    def test_case(assertion, read_data=None):
+    def test_case(assertion, msg, read_data=None):
         if read_data is not None:
             with open(fullpath, "w") as f:
                 f.write(read_data)
 
-        assert assertion()
+        assert assertion(), msg
 
     def transform(x):
         if not x:
@@ -272,28 +275,35 @@ def test_modify_json(tmpdir, path, contents):
         x[random.choice(x.keys())] = random.getrandbits(100)
         return x
 
-    # Should work when file is missing.
     test_case(
-        lambda: sh.modify_json(fullpath, transform),
-        read_data=json.dumps(contents),
+        lambda: sh.modify_config(fullpath, transform),
+        "Should work when file is missing",
+        read_data=yaml.dump(contents, default_flow_style=False),
     )
 
-    # ... and when it already exists.
-    test_case(lambda: sh.modify_json(fullpath, transform))
-    test_case(lambda: not sh.modify_json(fullpath, lambda x: x))
+    test_case(
+        lambda: sh.modify_config(fullpath, transform),
+        "Should modify when file already exists"
+    )
 
-    with pytest.raises(JSONError):
+    test_case(
+        lambda: not sh.modify_config(fullpath, lambda x: x),
+        "Should do nothing when file hasn't changed"
+    )
+
+    with pytest.raises(ParserError):
         test_case(
-            lambda: sh.modify_json(fullpath, transform),
-            read_data="garbage",
+            lambda: sh.modify_config(fullpath, transform),
+            "Should raise error if data is invalid",
+            read_data="[garbage}",
         )
 
 
 @pytest.mark.randomize(path=str, contents=dict_of(str, str), min_length=1)
-def test_write_json(tmpdir, path, contents):
+def test_write_config(tmpdir, path, contents):
     fullpath = str(tmpdir.join(path))
-    sh.write_json(fullpath, contents)
-    assert sh.read_json(fullpath) == contents
+    sh.write_config(fullpath, contents)
+    assert sh.read_config(fullpath) == contents
 
 
 def _samepath(path1, path2):

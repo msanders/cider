@@ -8,8 +8,8 @@ from .exceptions import (
 )
 from ._lib import lazyproperty
 from ._sh import (
-    Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p, read_json,
-    write_json, modify_json, isdirname
+    Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p,
+    read_config, write_config, modify_config, isdirname
 )
 from fnmatch import fnmatch
 from glob import iglob
@@ -48,11 +48,17 @@ class Cider(object):
 
     @lazyproperty
     def bootstrap_file(self):
-        return os.path.join(self.cider_dir, "bootstrap.json")
+        legacy_path = os.path.join(self.cider_dir, "bootstrap.json")
+        if os.path.isfile(legacy_path):
+            return legacy_path
+        return os.path.join(self.cider_dir, "bootstrap.yaml")
 
     @lazyproperty
     def defaults_file(self):
-        return os.path.join(self.cider_dir, "defaults.json")
+        legacy_path = os.path.join(self.cider_dir, "defaults.json")
+        if os.path.isfile(legacy_path):
+            return legacy_path
+        return os.path.join(self.cider_dir, "defaults.yaml")
 
     @lazyproperty
     def env(self):
@@ -82,10 +88,10 @@ class Cider(object):
         return os.path.join(self.support_dir, "symlink_targets.json")
 
     def read_bootstrap(self):
-        return read_json(self.bootstrap_file, {})
+        return read_config(self.bootstrap_file, {})
 
     def read_defaults(self):
-        return read_json(self.defaults_file, {})
+        return read_config(self.defaults_file, {})
 
     def _check_cider_dir(self):
         if not os.path.isdir(self.cider_dir):
@@ -108,7 +114,7 @@ class Cider(object):
             return bootstrap
 
         self._check_cider_dir()
-        return modify_json(self.bootstrap_file, outer_transform)
+        return modify_config(self.bootstrap_file, outer_transform)
 
     def _modify_defaults(self, domain, transform):
         def outer_transform(defaults):
@@ -116,15 +122,15 @@ class Cider(object):
             return defaults
 
         self._check_cider_dir()
-        return modify_json(self.defaults_file, outer_transform)
+        return modify_config(self.defaults_file, outer_transform)
 
     def _cached_targets(self):
-        return read_json(self.symlink_targets_file, [])
+        return read_config(self.symlink_targets_file, [])
 
     def _update_target_cache(self, new_targets):
         self._check_cider_dir()
         mkdir_p(os.path.dirname(self.symlink_targets_file))
-        write_json(self.symlink_targets_file, sorted(new_targets))
+        write_config(self.symlink_targets_file, sorted(new_targets))
 
     def _remove_dead_targets(self, targets):
         for target in targets:
@@ -550,7 +556,7 @@ class Cider(object):
         osx.remove_icon(app_path)
 
     def apply_icons(self):
-        bootstrap = read_json(self.bootstrap_file)
+        bootstrap = read_config(self.bootstrap_file)
         icons = bootstrap.get("icons", {})
         for app, icon in icons.items():
             _apply_icon(app, icon)

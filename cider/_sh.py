@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 from . import _tty as tty
-from .exceptions import JSONError
+from .exceptions import ParserError
 from subprocess import CalledProcessError
 import click
 import copy
@@ -10,6 +10,7 @@ import json
 import os
 import pwd
 import subprocess
+import yaml
 
 JSONDecodeError = ValueError
 
@@ -173,40 +174,46 @@ def commonpath(paths):
     return os.path.dirname(os.path.commonprefix(norm_paths))
 
 
-def read_json(path, fallback=None):
+def read_config(path, fallback=None):
+    is_json = os.path.splitext(path)[1] == ".json"
     try:
         with open(path, "r") as f:
-            return json.loads(f.read() or "{}")
+            contents = f.read() or "{}"
+            return json.loads(contents) if is_json else yaml.load(contents)
     except IOError as e:
         if fallback is not None and e.errno == errno.ENOENT:
             return fallback
 
         raise e
-    except JSONDecodeError as e:
-        raise JSONError(e, path)
+    except (JSONDecodeError, yaml.parser.ParserError) as e:
+        raise ParserError(e, path)
 
 
-def modify_json(path, transform):
-    contents = read_json(path, {})
+def modify_config(path, transform):
+    is_json = os.path.splitext(path)[1] == ".json"
+    contents = read_config(path, {})
     old_contents = contents
     contents = transform(copy.deepcopy(contents))
     changed = bool(old_contents != contents)
 
     if changed:
         with open(path, "w") as f:
-            json.dump(
-                contents,
-                f,
-                indent=4,
-                sort_keys=True,
-                separators=(',', ': ')
-            )
+            if is_json:
+                json.dump(contents, f, indent=4, sort_keys=True,
+                          separators=(',', ': '))
+            else:
+                yaml.dump(contents, f, indent=4, width=79, allow_unicode=True,
+                          default_flow_style=False)
 
     return changed
 
 
-def write_json(path, contents):
+def write_config(path, contents):
+    is_json = os.path.splitext(path)[1] == ".json"
     with open(path, "w") as f:
-        json.dump(
-            contents, f, indent=4, sort_keys=True, separators=(',', ': ')
-        )
+        if is_json:
+            json.dump(contents, f, indent=4, sort_keys=True,
+                      separators=(',', ': '))
+        else:
+            yaml.dump(contents, f, indent=4, width=79, allow_unicode=True,
+                      default_flow_style=False)

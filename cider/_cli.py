@@ -9,7 +9,7 @@ import click
 import sys
 
 from .exceptions import (
-    BrewMissingError, CiderException, JSONError
+    BrewMissingError, CiderException, ParserError
 )
 
 CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
@@ -254,8 +254,9 @@ def main():
             " ".join(e.cmd),
             e.returncode
         ))
-    except JSONError as e:
-        tty.puterr("Error reading JSON at {0}: {1}".format(
+    except ParserError as e:
+        tty.puterr("Error reading {0} at {1}: {2}".format(
+            e.filetype,
             e.filepath,
             e.message
         ))

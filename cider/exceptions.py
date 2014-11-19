@@ -1,3 +1,5 @@
+import os
+
 
 class CiderException(Exception):
     def __init__(self, message, exit_code=None):
@@ -7,10 +9,12 @@ class CiderException(Exception):
         self.exit_code = exit_code
 
 
-class JSONError(CiderException):
-    def __init__(self, message, filepath, exit_code=None):
+class ParserError(CiderException):
+    def __init__(self, message, path, exit_code=None):
+        is_json = os.path.splitext(path)[1] == ".json"
         CiderException.__init__(self, message, exit_code)
-        self.filepath = filepath
+        self.filepath = path
+        self.filetype = "JSON" if is_json else "YAML"
 
 
 class UnsupportedOSError(CiderException):

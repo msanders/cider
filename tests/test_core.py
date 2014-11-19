@@ -46,7 +46,7 @@ class TestBrewCore(object):
 
     @pytest.mark.randomize(data=dict_of(str, str))
     def test_read_bootstrap(self, tmpdir, cask, debug, verbose, data):
-        with patch("cider.core.read_json") as mock:
+        with patch("cider.core.read_config") as mock:
             cider = Cider(cask, debug, verbose, cider_dir=str(tmpdir))
             mock.return_value = data
             assert cider.read_bootstrap() == data
@@ -152,7 +152,7 @@ class TestCiderCore(object):
 
     @pytest.mark.randomize(data=dict_of(str, str))
     def test_read_defaults(self, tmpdir, debug, verbose, data):
-        with patch("cider.core.read_json") as mock:
+        with patch("cider.core.read_config") as mock:
             cider = Cider(False, debug, verbose, cider_dir=str(tmpdir))
             mock.return_value = data
 

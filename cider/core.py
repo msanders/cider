@@ -663,11 +663,15 @@ def _apply_icon(app, icon):
 
     try:
         components = urlparse(icon)
-        tmpdir = mkdtemp()
-        icon_path = os.path.join(tmpdir, os.path.basename(components["path"]))
-        print(tty.progress("Downloading {0} icon: {1}".format(app, icon)))
-        curl(icon, icon_path)
+        if not components["scheme"] or components['scheme'] == "file":
+            icon_path = components["path"]
+        else:
+            tmpdir = mkdtemp()
+            icon_path = os.path.join(tmpdir,
+                                     os.path.basename(components["path"]))
+            print(tty.progress("Downloading {0} icon: {1}".format(app, icon)))
+            curl(icon, icon_path)
     except ValueError:
         icon_path = icon
 
-    osx.set_icon(app_path, icon_path)
+    osx.set_icon(app_path, os.path.expanduser(icon_path))

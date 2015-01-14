@@ -214,6 +214,7 @@ class Cider(object):
         dependencies = bootstrap.get("dependencies", {})
 
         self.run_scripts(before=True)
+        homebrew.update()
 
         for tap in bootstrap.get("taps", []):
             homebrew.tap(tap)

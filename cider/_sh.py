@@ -92,6 +92,9 @@ class Brew(object):
             "uses", args, check_output=True
         ).strip().split("\n")
 
+    def update(self):
+        return self.__spawn("update", [])
+
 
 class Defaults(object):
     def __init__(self, debug=None, env=None):

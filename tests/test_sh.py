@@ -116,6 +116,13 @@ class TestBrew(object):
                                     env=brew.env)
         sh.spawn.return_value = old_return
 
+    def test_update(self, cask, debug, verbose):
+        brew = Brew(cask, debug, verbose)
+        args = self.__cmd(cask) + ["update"] + self.__flags(debug, verbose)
+        brew.update()
+        sh.spawn.assert_called_with(args, debug=debug, check_output=False,
+                                    env=brew.env)
+
     @staticmethod
     def __cmd(cask=None):
         return ["brew"] + (["cask"] if cask else [])

@@ -218,6 +218,9 @@ class Cider(object):
         for tap in bootstrap.get("taps", []):
             homebrew.tap(tap)
 
+        outdated = homebrew.outdated()
+        outdated_casks = caskbrew.outdated()
+
         for formula in bootstrap.get("formulas", []):
             if formula in dependencies:
                 deps = dependencies[formula]
@@ -234,13 +237,14 @@ class Cider(object):
                         )
                     )
 
-                    caskbrew.safe_install(cask, ignore_errors)
+                    caskbrew.safe_install(cask, ignore_errors,
+                                          cask in outdated_casks)
                     del casks[casks.index(cask)]
 
-            homebrew.safe_install(formula, ignore_errors)
+            homebrew.safe_install(formula, ignore_errors, formula in outdated)
 
         for cask in casks:
-            caskbrew.safe_install(cask, ignore_errors)
+            caskbrew.safe_install(cask, ignore_errors, cask in outdated)
 
         self.relink()
         self.apply_defaults()

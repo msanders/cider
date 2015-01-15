@@ -9,10 +9,13 @@ import errno
 import json
 import os
 import pwd
+import re
 import subprocess
 import yaml
 
 JSONDecodeError = ValueError
+
+_OUTDATED_RE = re.compile(r' \(\d.*\)$')
 
 
 class Brew(object):
@@ -43,15 +46,16 @@ class Brew(object):
     def __assert_no_cask(self, cmd):
         assert not self.cask, "no such command: `brew cask {0}`".format(cmd)
 
-    def safe_install(self, formula, warn=None):
+    def safe_install(self, formula, warn=None, outdated=False):
         warn = warn if warn is not None else False
         try:
             prompt = None
+            cmd = "install" if not outdated else "upgrade"
             if not warn:
                 prompt = "Failed to install {0}. Continue? [y/N]".format(
                     formula
                 )
-            return self.__spawn("install", formula.split(" "), prompt)
+            return self.__spawn(cmd, formula.split(" "), prompt)
         except CalledProcessError as e:
             if not warn:
                 raise e
@@ -88,9 +92,13 @@ class Brew(object):
 
     def uses(self, formula):
         args = ["--installed", "--recursive", formula]
-        return self.__spawn(
-            "uses", args, check_output=True
-        ).strip().split("\n")
+        return self.__spawn("uses", args,
+                            check_output=True).strip().split("\n")
+
+    def outdated(self):
+        output = self.__spawn("outdated", [],
+                              check_output=True).strip().split("\n")
+        return [_OUTDATED_RE.sub("", line) for line in output]
 
 
 class Defaults(object):

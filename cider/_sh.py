@@ -143,7 +143,7 @@ def spawn(args, **kwargs):
     tty.putdebug(" ".join(args), debug)
 
     if check_output:
-        return subprocess.check_output(args, **params)
+        return subprocess.check_output(args, **params).decode("utf-8")
     elif check_call:
         return subprocess.check_call(args, **params)
     else:

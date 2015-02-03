@@ -6,7 +6,7 @@ static PyObject *setIcon(NSString *filePath, NSString *iconPath)
 {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
-    NSArray *paths = @[filePath];
+    NSArray *paths = [NSArray arrayWithObject:filePath];
     if (iconPath) {
         paths = [paths arrayByAddingObject:iconPath];
     }
@@ -27,10 +27,11 @@ static PyObject *setIcon(NSString *filePath, NSString *iconPath)
 
 static void setPyErrorFromNSError(NSError *error)
 {
-    NSArray *keys = @[NSLocalizedDescriptionKey, NSLocalizedFailureReasonErrorKey];
+    NSArray *keys = [NSArray arrayWithObjects:NSLocalizedDescriptionKey,
+                                              NSLocalizedFailureReasonErrorKey, nil];
     NSMutableArray *errors = [NSMutableArray arrayWithCapacity:keys.count];
     for (NSString *key in keys) {
-        NSString *value = error.userInfo[key];
+        NSString *value = [error.userInfo objectForKey:key];
         if (value) {
             [errors addObject:value];
         }

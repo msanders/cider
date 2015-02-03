@@ -42,7 +42,8 @@ ext = Extension(
         "-Wall",
         "-Werror",
         "-framework", "Foundation",
-        "-framework", "AppKit"
+        "-framework", "AppKit",
+        "-fobjc-arc"
     ]
 )
 

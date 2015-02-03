@@ -58,6 +58,7 @@ setup(
     install_requires=[
         'Click>=3.3',
         'rfc3987>=1.3.4',
+        'PyYAML>=3.11'
     ],
     entry_points='''
         [console_scripts]

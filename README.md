@@ -88,7 +88,7 @@ User defaults are stored similarly:
         }
     }
 
-To see how this works out in practice, feel free to take a look at [my dotfiles](https://github.com/msanders/dotfiles).
+Cider also supports YAML if you'd like to add comments to either of these. To see how this works out in practice, feel free to take a look at [my dotfiles](https://github.com/msanders/dotfiles).
 
 ## Backup your existing setup
 

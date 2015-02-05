@@ -1,2 +1,2 @@
--e hg+https://bitbucket.org/t2y/pytest-quickcheck#egg=pytest-quickcheck
-prospector
+pytest-quickcheck>=0.8.1
+prospector>=0.9.7

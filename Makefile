@@ -1,7 +1,7 @@
 SRCDIR = ./cider
 
 analyze:
-	prospector -T --profile .cider.yaml --ignore-paths src
+	prospector --profile .cider.yaml --ignore-paths src
 
 test:
 	py.test --maxfail 1 tests

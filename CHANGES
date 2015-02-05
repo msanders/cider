@@ -1,3 +1,12 @@
+v1.1.6, Feb. 5, 2015
+  - Added YAML support for bootstrap and defaults files.
+  - Fixed issue with setting icons for local paths.
+  - `brew upgrade` is now used instead of install when restoring if a formula
+    is outdated.
+  - Fixed an exception when restoring on Python 3.
+  - Fixed an error on old compilers without support for subscripting in
+    Objective-C.
+
 v1.1.5, Nov. 15, 2014
   - Fixed broken execution flow for `--version` flag.
   - Fixed false-positive for xcode-select requirement.

@@ -102,7 +102,7 @@ class Cider(object):
 
     def _modify_bootstrap(self, key, transform=None, fallback=None):
         if transform is None:
-            transform = lambda x: x
+            transform = lambda x: x  # pep8: noqa
 
         if fallback is None:
             fallback = []
@@ -461,8 +461,8 @@ class Cider(object):
         missing_items = self.missing()
         if missing_items:
             suffix = "s" if len(missing_items) != 1 else ""
-            fmt = "{0} missing formula{1} (tip: try `brew uses --installed` " + \
-                  "to see what's using it)"
+            fmt = "{0} missing formula{1} (tip: try `brew uses " + \
+                  "--installed` to see what's using it)"
             tty.puterr(fmt.format(len(missing_items), suffix), warning=True)
 
             print("\n".join(missing_items) + "\n")

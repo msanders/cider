@@ -80,6 +80,7 @@ setup(
         'Operating System :: MacOS :: MacOS X',
         'Programming Language :: Objective C',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
         'Topic :: Software Development',
         'Topic :: System',
         'Topic :: System :: Archiving :: Backup',

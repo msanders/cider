@@ -440,6 +440,10 @@ class Cider(object):
         brewed = self.brew.ls()
 
         def brew_orphan(formula):
+            # Temporary workaround to avoid bug with brew-pip.
+            # https://github.com/msanders/cider/issues/25
+            if formula.startswith("pip-"):
+                return False
             uses = self.brew.uses(formula)
             return len(set(installed) & set(uses)) == 0
 

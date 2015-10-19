@@ -11,6 +11,7 @@ import os
 import pwd
 import re
 import subprocess
+import sys
 import yaml
 
 JSONDecodeError = ValueError
@@ -148,6 +149,15 @@ def spawn(args, **kwargs):
         return subprocess.check_call(args, **params)
     else:
         return subprocess.call(args, **params)
+
+
+def prompt(msg, default=None):
+    if default is None:
+        default = False
+    sys.stdout.write(msg)
+    sys.stdout.flush()
+    expected = "n" if default else "y"
+    return sys.stdin.read(1).lower() == expected
 
 
 def curl(url, path):

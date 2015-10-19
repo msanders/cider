@@ -9,7 +9,7 @@ from .exceptions import (
 from ._lib import lazyproperty
 from ._sh import (
     Brew, Defaults, spawn, collapseuser, commonpath, curl, mkdir_p,
-    read_config, write_config, modify_config, isdirname
+    read_config, write_config, modify_config, isdirname, prompt
 )
 from fnmatch import fnmatch
 from glob import iglob
@@ -464,11 +464,9 @@ class Cider(object):
             fmt = "{0} missing formula{1} (tip: try `brew uses " + \
                   "--installed` to see what's using it)"
             tty.puterr(fmt.format(len(missing_items), suffix), warning=True)
-
             print("\n".join(missing_items) + "\n")
-            sys.stdout.write("Add to bootstrap? [y/N] ")
 
-            if sys.stdin.read(1).lower() == "y":
+            if prompt("Add to bootstrap? [y/N] "):
                 self.add_to_bootstrap(missing_items)
         else:
             print("Everything up to date.")
@@ -479,11 +477,9 @@ class Cider(object):
             suffix = "s" if len(missing_taps) != 1 else ""
             fmt = "{0} missing tap{1}"
             tty.puterr(fmt.format(len(missing_taps), suffix), warning=True)
-
             print("\n".join(missing_taps) + "\n")
-            sys.stdout.write("Add to bootstrap? [y/N] ")
 
-            if sys.stdin.read(1).lower() == "y":
+            if prompt("Add to bootstrap? [y/N] "):
                 self.add_taps(missing_taps)
         else:
             print("Everything up to date.")

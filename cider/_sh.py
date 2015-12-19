@@ -97,7 +97,7 @@ class Brew(object):
                             check_output=True).strip().split("\n")
 
     def outdated(self):
-        output = self.__spawn("outdated", [],
+        output = self.__spawn("cleanup", ["--outdated"],
                               check_output=True).strip().split("\n")
         return [_OUTDATED_RE.sub("", line) for line in output]
 

@@ -23,7 +23,6 @@ import platform
 import re
 import shutil
 import subprocess
-import sys
 
 _DEFAULTS_TRUE_RE = re.compile(r"\b(Y(ES)?|TRUE)\b", re.I)
 _DEFAULTS_FALSE_RE = re.compile(r"\b(N(O)?|FALSE)\b", re.I)
@@ -442,7 +441,10 @@ class Cider(object):
             # https://github.com/msanders/cider/issues/25
             if formula.startswith("pip-"):
                 return False
-            uses = self.brew.uses(formula)
+            if self.cask:
+                uses = brewed
+            else:
+                uses = self.brew.uses(formula)
             return len(set(installed) & set(uses)) == 0
 
         return sorted(filter(brew_orphan, set(brewed) - set(installed)))

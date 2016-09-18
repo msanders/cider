@@ -1,3 +1,6 @@
+v1.1.8, September 18, 2016.
+  - Fixed "Unknown error: --uses" error when using brew cask.
+
 v1.1.8, March 21, 2016.
   - Fixed compatibility with brew cask.
   - Fixed compatibility with brew pip.

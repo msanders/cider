@@ -433,7 +433,9 @@ class Cider(object):
         return self.read_bootstrap().get("taps", [])
 
     def missing(self):
+        # The packages currently in the bootstrap file
         installed = [item.split()[0].strip() for item in self.installed()]
+        # List of packages installed on the system
         brewed = self.brew.ls()
 
         def brew_orphan(formula):
@@ -442,9 +444,11 @@ class Cider(object):
             if formula.startswith("pip-"):
                 return False
             if self.cask:
-                uses = brewed
-            else:
-                uses = self.brew.uses(formula)
+                # If the formula is not in bootstrap file
+                # return True so we can add the formula to the
+                # bootstrap file
+                return formula not in installed
+            uses = self.brew.uses(formula)
             return len(set(installed) & set(uses)) == 0
 
         return sorted(filter(brew_orphan, set(brewed) - set(installed)))

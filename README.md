@@ -1,7 +1,3 @@
-[![PyPI version](https://pypip.in/version/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
-[![PyPI downloads](https://pypip.in/status/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
-[![PyPI status](https://pypip.in/download/cider/badge.svg)](https://pypi.python.org/pypi/cider/)
-
 ## Start with a clean slate
 
 Cider is a simple wrapper for [Homebrew](http://brew.sh) and [Homebrew Cask](http://caskroom.io) that allows you to save your setup across different machines. This lets you to restore a backup without having to deal with the mess that was the state of your previous installation, or painstakingly babysit the process step-by-step.
@@ -119,4 +115,4 @@ Directories in targets are automatically expanded, so the entry `"bin/*": "~/bin
 
 There doesn't seem to be a way to re-install purchases made from Mac App Store via the command line just yet, so those have to be done by hand.
 
-**Note**: Cider is a work-in-progress, but it's fairly well-tested and should be kind to your machine.
+**Note**: Cider is a work-in-progress, but it's well-tested and should be kind to your machine.

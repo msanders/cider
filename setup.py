@@ -50,7 +50,6 @@ ext = Extension(
 setup(
     name='cider',
     author=author,
-    author_email='michael [at] msanders [dot] com',
     version=version,
     url=REPO_URL,
     packages=find_packages(),

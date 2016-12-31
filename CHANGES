@@ -1,4 +1,9 @@
-v1.1.8, September 18, 2016.
+v1.1.10, December 30, 2016.
+  - Fixed issue with `cider cask missing` not working properly on newer
+    versions of cask.
+  - Fixed issue with apply defaults not iterating keys in the correct order.
+
+v1.1.9, September 18, 2016.
   - Fixed "Unknown error: --uses" error when using brew cask.
 
 v1.1.8, March 21, 2016.

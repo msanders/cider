@@ -127,7 +127,7 @@ class Defaults(object):
         }
 
         return next(
-            (k for t, k in key_types.items() if isinstance(value, t)),
+            (k for t, k in sorted(key_types.items()) if isinstance(value, t)),
             "-string"
         )
 

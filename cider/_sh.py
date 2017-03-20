@@ -120,14 +120,14 @@ class Defaults(object):
 
     @staticmethod
     def key_type(value):
-        key_types = {
-            bool: "-bool",
-            float: "-float",
-            int: "-int"
-        }
+        key_types = [
+            (bool, "-bool"),
+            (float, "-float"),
+            (int, "-int")
+        ]
 
         return next(
-            (k for t, k in sorted(key_types.items()) if isinstance(value, t)),
+            (k for t, k in key_types if isinstance(value, t)),
             "-string"
         )
 

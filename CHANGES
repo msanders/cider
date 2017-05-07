@@ -1,3 +1,7 @@
+v1.1.11, May 6, 2017.
+  - Fixed issue with warnings shown on latest Click with Python 2.
+  - Fixed Python 3 compatibility in apply defaults command.
+
 v1.1.10, December 30, 2016.
   - Fixed issue with `cider cask missing` not working properly on newer
     versions of cask.

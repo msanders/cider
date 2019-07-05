@@ -258,7 +258,7 @@ def main():
         tty.puterr("Error reading {0} at {1}: {2}".format(
             e.filetype,
             e.filepath,
-            e.message
+            e
         ))
     except BrewMissingError as e:
         print("Next, install Homebrew (press any key to redirect)")
@@ -266,7 +266,7 @@ def main():
         urlopen(e.url)
         sys.exit(1)
     except (CiderException, click.ClickException) as e:
-        tty.puterr(e.message, prefix="Error:")
+        tty.puterr(e, prefix="Error:")
         sys.exit(e.exit_code)
     except click.Abort:
         sys.stderr.write("Aborted!\n")

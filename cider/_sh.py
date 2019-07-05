@@ -197,7 +197,7 @@ def read_config(path, fallback=None):
     try:
         with open(path, "r") as f:
             contents = f.read() or "{}"
-            return json.loads(contents) if is_json else yaml.load(contents)
+            return json.loads(contents) if is_json else yaml.safe_load(contents)
     except IOError as e:
         if fallback is not None and e.errno == errno.ENOENT:
             return fallback

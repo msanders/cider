@@ -595,10 +595,12 @@ class Cider(object):
     def remove_symlink(self, name):
         def transform(symlinks):
             if symlinks:
+                to_delete = []
                 for key in symlinks.keys():
                     if self._islinkkey(key, name):
-                        del symlinks[key]
-
+                       to_delete.append(key)
+                for key in to_delete:
+                    del symlinks[key]
             return symlinks
 
         return self._modify_bootstrap("symlinks", transform)

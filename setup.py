@@ -55,7 +55,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Click>=3.3,<5.0',
+        'click>=7.0,<8.0',
         'rfc3987>=1.3.8<2.0.0',
         'PyYAML>=5.1<6.0'
     ],

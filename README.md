@@ -1,3 +1,8 @@
+## Deprecation Notice
+
+Cider is no longer actively maintained, and has been superseded by a new
+tool, [zero.sh](https://github.com/zero-sh/zero.sh).
+
 ## Start with a clean slate
 
 Cider is a simple wrapper for [Homebrew](http://brew.sh) and [Homebrew Cask](http://caskroom.io) that allows you to save your setup across different machines. This lets you to restore a backup without having to deal with the mess that was the state of your previous installation, or painstakingly babysit the process step-by-step.

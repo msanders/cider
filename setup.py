@@ -43,7 +43,7 @@ ext = Extension(
 setup(
     name='cider',
     author=author,
-    author_email='michael.sanders@fastmail.com',
+    author_email='pypi@michaelsande.rs',
     version=version,
     url=REPO_URL,
     packages=find_packages(),
